@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RotateCw } from "lucide-react";
 import { SwipeCard } from "@/components/SwipeCard";
 import { AestheticCard } from "@/components/AestheticCard";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -144,7 +145,7 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
   const [left, right] = session.currentPair ?? [null, null];
 
   return (
-    <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full px-4 py-6">
+    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 min-h-[calc(100dvh-4rem)]">
       <StageIndicator
         currentStage={2}
         stage1={{ done: swipe.likedIds.length, total: swipe.total }}
@@ -159,14 +160,19 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
       </p>
 
       {left && right && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-1 min-h-0">
           <AestheticCard aesthetic={left} side="left" onChoose={() => session.choose(left.id, right.id)} />
           <AestheticCard aesthetic={right} side="right" onChoose={() => session.choose(right.id, left.id)} />
         </div>
       )}
 
-      <div className="flex items-center justify-end pt-1">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3 pt-1">
+        {/* Rotate hint — only on narrow portrait viewports. */}
+        <p className="hidden max-sm:portrait:inline-flex items-center gap-1.5 text-white/35 text-[11px]">
+          <RotateCw className="w-3 h-3" strokeWidth={1.75} />
+          <span>Rotate phone for a wider view</span>
+        </p>
+        <div className="flex items-center gap-4 ml-auto">
           <button onClick={session.skip} className="text-white/20 hover:text-white/50 text-sm transition-colors">
             Can&apos;t decide
           </button>

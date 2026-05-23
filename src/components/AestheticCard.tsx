@@ -41,10 +41,10 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
 
   return (
     <>
-      <div className="relative flex flex-col w-full rounded-2xl overflow-hidden border bg-neutral-900 border-white/10">
+      <div className="relative flex flex-col w-full h-full rounded-2xl overflow-hidden border bg-neutral-900 border-white/10">
         <button
           onClick={onChoose}
-          className={`group relative flex flex-col w-full cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:scale-[0.985] text-left ${
+          className={`group relative flex flex-col w-full h-full cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:scale-[0.985] text-left ${
             isLeft ? "hover:bg-indigo-950/25" : "hover:bg-rose-950/25"
           }`}
         >
@@ -130,8 +130,10 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             </div>
           )}
 
-          {/* Info — compacted on mobile so two cards stay side-by-side. */}
-          <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1">
+          {/* Info — compacted on mobile so two cards stay side-by-side. The
+              body grows to fill the available height; the description can
+              scroll within the card if it overflows. */}
+          <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1 min-h-0">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <h2
                 className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight"
@@ -147,7 +149,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             </div>
 
             {aesthetic.description && (
-              <p className="text-white/65 text-[11px] sm:text-sm leading-snug sm:leading-relaxed whitespace-pre-line line-clamp-3 sm:line-clamp-none">
+              <p className="text-white/65 text-[11px] sm:text-sm leading-snug sm:leading-relaxed whitespace-pre-line flex-1 min-h-0 overflow-y-auto scrollbar-thin">
                 {aesthetic.description}
               </p>
             )}
