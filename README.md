@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aesthetics Ranking
 
-## Getting Started
+Compare visual aesthetics from [CARI Institute](https://cari.institute/aesthetics) side by side and build your personal ELO ranking. Share your ranking with a unique link.
 
-First, run the development server:
+## Features
+
+- Pairwise comparison of 90 aesthetics
+- ELO ranking algorithm (K=32)
+- Smart pair selection (random early on, closest-rated later)
+- Optional sign-in (Google OAuth) — works without an account, ratings persist via anonymous Supabase session
+- Shareable links (`/share/<slug>`) for read-only ranking views
+
+## Stack
+
+- **Next.js 16** (App Router)
+- **Supabase** (PostgreSQL + Auth)
+- **Tailwind CSS + shadcn/ui**
+- **Vercel** for hosting
+
+## Setup
+
+### 1. Create a Supabase project
+
+Go to [supabase.com](https://supabase.com), create a new project.
+
+### 2. Run the schema SQL
+
+In Supabase Dashboard → SQL Editor, run the contents of [`supabase/schema.sql`](supabase/schema.sql).
+
+### 3. Configure environment variables
+
+```bash
+cp .env.local.example .env.local
+```
+
+Fill in your Supabase project URL and anon key from **Settings → API**.
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 4. Seed aesthetics
+
+Run the seed script to fetch all aesthetics from CARI and populate your database.
+Requires a **service role key** to bypass RLS:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed
+```
+
+Or with anon key if you temporarily disable RLS on `aesthetics`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run seed
+```
+
+### 5. Enable Google OAuth (optional)
+
+In Supabase Dashboard → Authentication → Providers → Google, enable Google OAuth and add your credentials.
+
+Add the callback URL to Google Cloud Console:
+```
+https://your-project.supabase.co/auth/v1/callback
+```
+
+### 6. Run locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy to Vercel
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install -g vercel
+vercel
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Set the same environment variables in Vercel project settings:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  app/
+    compare/          # Main comparison page
+    ranking/          # Personal ranking page
+    share/[slug]/     # Read-only shared ranking
+    auth/callback/    # OAuth callback handler
+  components/
+    AestheticCard     # Clickable aesthetic comparison card
+    RankingList       # Ranked list with ELO scores
+    AuthButton        # Google sign-in / sign-out
+  hooks/
+    useSession        # Core state: session, ratings, pair selection
+  lib/
+    elo.ts            # ELO algorithm
+    session.ts        # Anonymous session management
+    supabase/         # Supabase client (browser + server)
+scripts/
+  seed-aesthetics.ts  # One-time DB seed from CARI API
+supabase/
+  schema.sql          # Database schema + RLS policies
+```
