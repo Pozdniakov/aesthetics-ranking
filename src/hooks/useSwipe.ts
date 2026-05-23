@@ -25,7 +25,16 @@ export function useSwipe(aesthetics: Aesthetic[]) {
     try {
       const likes = localStorage.getItem(LIKES_KEY);
       const index = localStorage.getItem(INDEX_KEY);
-      if (likes) setLikedIds(JSON.parse(likes));
+      if (likes) {
+        const parsed: string[] = JSON.parse(likes);
+        // Migrate: any pre-existing duplicates in localStorage are scrubbed
+        // here so the comparison phase never gets a poisoned pool.
+        const deduped = Array.from(new Set(parsed));
+        if (deduped.length !== parsed.length) {
+          localStorage.setItem(LIKES_KEY, JSON.stringify(deduped));
+        }
+        setLikedIds(deduped);
+      }
       if (index) {
         const parsed = parseInt(index, 10);
         setCurrentIndex(
@@ -46,7 +55,10 @@ export function useSwipe(aesthetics: Aesthetic[]) {
   const like = () => {
     if (currentIndex >= aesthetics.length) return;
     const id = aesthetics[currentIndex].id;
-    const newLikes = [...likedIds, id];
+    // Dedupe: an id must not appear twice in `likedIds`, otherwise the
+    // comparison algorithm could later pick the same aesthetic on both
+    // sides (a "choose between A and A" pair).
+    const newLikes = likedIds.includes(id) ? likedIds : [...likedIds, id];
     const next = currentIndex + 1;
     setHistory((h) => [...h, { prevIndex: currentIndex, wasLiked: true, aestheticId: id }]);
     setLikedIds(newLikes);

@@ -61,11 +61,40 @@ export function useSession(likedIds: string[]) {
   }
 
   function resolveAndSetPair(s: InsertionState) {
-    // Advance past first item (no comparison needed)
+    // Advance past first item (no comparison needed) and skip any
+    // candidate that would otherwise produce a degenerate "A vs A" pair
+    // (this can only happen with a broken pool that contains duplicates;
+    // we keep the guard so older localStorage states don't get stuck).
     let cur = s;
-    while (cur.sorted.length === 0 && cur.remaining.length > 0 && !cur.pending) {
-      cur = advanceNoComparison(cur);
+    // Hard ceiling — prevents an unexpected loop from hanging the UI.
+    for (let safety = 0; safety < 1000; safety++) {
+      if (
+        cur.sorted.length === 0 &&
+        cur.remaining.length > 0 &&
+        !cur.pending
+      ) {
+        cur = advanceNoComparison(cur);
+        continue;
+      }
+      const candidatePair = nextPair(cur);
+      if (!candidatePair) break;
+      if (candidatePair[0] !== candidatePair[1]) break;
+
+      console.warn(
+        "[useSession] dropped duplicate candidate from comparison pool",
+        candidatePair[0]
+      );
+      // Remove the duplicate candidate from `remaining` without emitting
+      // a comparison. Pending state (if any) is cleared because its
+      // candidate is the bad id.
+      const broken = cur.pending?.candidate ?? cur.remaining[0];
+      cur = {
+        ...cur,
+        remaining: cur.remaining.filter((id) => id !== broken),
+        pending: null,
+      };
     }
+
     if (cur !== s) {
       setInsertState(cur);
       saveState(cur, poolRef.current);
@@ -97,7 +126,15 @@ export function useSession(likedIds: string[]) {
     }
 
     const allIds = aesthetics.map((a) => a.id);
-    const pool = likedIds.length >= K ? likedIds : allIds;
+    const rawPool = likedIds.length >= K ? likedIds : allIds;
+    // Defensive dedupe — see resolveAndSetPair for why duplicates would be
+    // disastrous (they'd produce "A vs A" comparison pairs).
+    const seen = new Set<string>();
+    const pool = rawPool.filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
 
     let state: InsertionState;
     if (
