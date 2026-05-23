@@ -93,10 +93,11 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             </span>
           </div>
 
-          {/* Gallery selector — replaces active image. Hidden on the
-              tightest screens where two cards have to fit side by side. */}
+          {/* Gallery selector — horizontally scrollable strip of thumbs.
+              Same pattern as phase 1's SwipeCard so the UX is consistent
+              and the strip still works on narrow mobile cards. */}
           {allImages.length > 1 && (
-            <div className="hidden sm:flex gap-1 p-1 flex-shrink-0 overflow-x-auto bg-black/30">
+            <div className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto bg-black/30">
               {allImages.map((url, i) => {
                 const isActive = i === activeIndex;
                 return (
@@ -110,7 +111,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
                     tabIndex={0}
                     aria-label={`Show image ${i + 1}`}
                     aria-pressed={isActive}
-                    className={`relative flex-1 min-w-0 h-12 sm:h-14 rounded-md overflow-hidden bg-neutral-800 cursor-pointer transition-all ${
+                    className={`relative flex-shrink-0 w-10 h-8 sm:w-14 sm:h-12 md:w-16 md:h-14 rounded-md overflow-hidden bg-neutral-800 cursor-pointer transition-all ${
                       isActive
                         ? "ring-2 ring-white opacity-100"
                         : "opacity-55 hover:opacity-95 ring-1 ring-white/10"
