@@ -165,18 +165,18 @@ export function SwipeCard({
                 )}
               </div>
               <a
-                href={`https://cari.institute/aesthetics/${aesthetic.slug}`}
+                href={`/aesthetics/${aesthetic.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 sm:w-auto sm:h-auto sm:px-2 sm:py-1 rounded-full sm:rounded-md border border-white/10 sm:border-transparent text-white/45 hover:text-white sm:hover:bg-white/10 transition-colors"
-                aria-label="View on CARI"
+                aria-label="Open aesthetic details"
               >
                 <ArrowUpRight
                   className="w-3.5 h-3.5 sm:w-3 sm:h-3"
                   strokeWidth={1.75}
                 />
                 <span className="hidden sm:inline ml-1 text-[10px] uppercase tracking-[0.15em]">
-                  CARI
+                  Info
                 </span>
               </a>
             </div>

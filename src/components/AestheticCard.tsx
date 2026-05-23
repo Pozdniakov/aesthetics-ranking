@@ -175,13 +175,13 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
           )}
 
           <a
-            href={`https://cari.institute/aesthetics/${aesthetic.slug}`}
+            href={`/aesthetics/${aesthetic.slug}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="hidden sm:inline-flex mt-1 items-center gap-1.5 self-start text-white/35 hover:text-white text-[11px] uppercase tracking-[0.15em] transition-colors pt-1"
           >
-            <span>View on CARI</span>
+            <span>More info</span>
             <ArrowUpRight className="w-3 h-3" strokeWidth={1.75} />
           </a>
         </div>

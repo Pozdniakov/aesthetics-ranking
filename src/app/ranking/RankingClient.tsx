@@ -287,10 +287,8 @@ function TopItem({ item, pos }: { item: RatedAesthetic; pos: number }) {
   const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
   return (
     <li>
-      <a
-        href={`https://cari.institute/aesthetics/${item.slug}`}
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href={`/aesthetics/${item.slug}`}
         className="flex items-center gap-3 rounded-xl p-3 border bg-white/5 border-white/10 hover:bg-white/10 transition-colors"
       >
         <span className="text-lg w-8 text-center flex-shrink-0">
@@ -308,7 +306,7 @@ function TopItem({ item, pos }: { item: RatedAesthetic; pos: number }) {
         <div className="flex-shrink-0">
           <span className="text-white/20 font-mono text-xs">#{pos}</span>
         </div>
-      </a>
+      </Link>
     </li>
   );
 }

@@ -20,9 +20,7 @@ export function RankingList({ items, showPosition = true }: Props) {
         return (
           <li key={item.id}>
             <Link
-              href={`https://cari.institute/aesthetics/${item.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`/aesthetics/${item.slug}`}
               className="flex items-center gap-3 rounded-xl p-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors"
             >
               {/* Position */}

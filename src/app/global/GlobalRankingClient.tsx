@@ -204,13 +204,11 @@ export function GlobalRankingClient() {
               3: "3rd",
             };
             return (
-              <a
+              <Link
                 key={row.id}
-                href={`https://cari.institute/aesthetics/${row.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/aesthetics/${row.slug}`}
                 className="group flex flex-col items-center focus-visible:outline-none"
-                title={`${places[realPos]} place — ${row.name} (opens cari.institute)`}
+                title={`${places[realPos]} place — ${row.name}`}
               >
                 {/* Crown grows out of the card — its band and festoon dip
                     into the top of the image so the ornament reads as
@@ -251,7 +249,7 @@ export function GlobalRankingClient() {
                     </p>
                   </div>
                 </div>
-              </a>
+              </Link>
             );
           })}
         </div>
@@ -261,10 +259,8 @@ export function GlobalRankingClient() {
       <ol className="flex flex-col">
         {visible.map((row, i) => (
           <li key={row.id}>
-            <a
-              href={`https://cari.institute/aesthetics/${row.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href={`/aesthetics/${row.slug}`}
               className="group flex items-center gap-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors"
             >
               <span className="w-8 text-right flex-shrink-0 font-mono tabular-nums text-white/30 text-sm group-hover:text-white/60 transition-colors">
@@ -313,7 +309,7 @@ export function GlobalRankingClient() {
               <span className="sm:hidden flex-shrink-0 font-mono tabular-nums text-white text-sm">
                 {Math.round(row.rawWinRate * 100)}%
               </span>
-            </a>
+            </Link>
           </li>
         ))}
       </ol>
