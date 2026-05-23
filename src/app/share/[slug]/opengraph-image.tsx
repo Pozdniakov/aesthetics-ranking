@@ -9,6 +9,7 @@ interface SessionRow {
   id: string;
   is_public: boolean;
   display_name: string | null;
+  top_k_ids: string[] | null;
 }
 interface CompRow {
   winner_id: string;
@@ -68,7 +69,7 @@ export default async function Image({
   // 1. Session
   const { data: session } = await supabase
     .from("ranking_sessions")
-    .select("id, is_public, display_name")
+    .select("id, is_public, display_name, top_k_ids")
     .eq("share_slug", slug)
     .single();
 
@@ -77,7 +78,9 @@ export default async function Image({
     return fallback("Aesthetics Ranking");
   }
 
-  // 2. This session's comparisons → top 5 by wins
+  // 2. This session's comparisons → top 5
+  //    Prefer the algorithm's authoritative top (stored on Share); fall
+  //    back to wins-based reconstruction for legacy share links.
   const { data: compsData } = await supabase
     .from("comparisons")
     .select("winner_id, loser_id")
@@ -85,16 +88,21 @@ export default async function Image({
   const comps = (compsData ?? []) as CompRow[];
   if (comps.length === 0) return fallback("Aesthetics Ranking");
 
-  const wins = new Map<string, number>();
-  const seen = new Set<string>();
-  for (const { winner_id, loser_id } of comps) {
-    wins.set(winner_id, (wins.get(winner_id) ?? 0) + 1);
-    seen.add(winner_id);
-    seen.add(loser_id);
+  let topIds: string[];
+  if (sessionRow.top_k_ids && sessionRow.top_k_ids.length > 0) {
+    topIds = sessionRow.top_k_ids.slice(0, 5);
+  } else {
+    const wins = new Map<string, number>();
+    const seen = new Set<string>();
+    for (const { winner_id, loser_id } of comps) {
+      wins.set(winner_id, (wins.get(winner_id) ?? 0) + 1);
+      seen.add(winner_id);
+      seen.add(loser_id);
+    }
+    topIds = [...seen]
+      .sort((a, b) => (wins.get(b) ?? 0) - (wins.get(a) ?? 0))
+      .slice(0, 5);
   }
-  const topIds = [...seen]
-    .sort((a, b) => (wins.get(b) ?? 0) - (wins.get(a) ?? 0))
-    .slice(0, 5);
 
   // 3. Aesthetic details for top 5
   const { data: aestheticsData } = await supabase

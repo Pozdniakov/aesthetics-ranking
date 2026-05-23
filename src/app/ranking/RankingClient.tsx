@@ -64,6 +64,11 @@ export function RankingClient() {
     try {
       const slug = nanoid(8);
       const displayName = getStoredDisplayName();
+      // Persist the *exact* algorithm-ranked top so the share page renders
+      // what the user actually saw, not a wins-based reconstruction (which
+      // would diverge whenever the user used undo or whenever the Guarded
+      // Insertion order disagrees with raw win counts).
+      const topKIds = session.confirmedTop;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("ranking_sessions")
@@ -71,6 +76,7 @@ export function RankingClient() {
           share_slug: slug,
           is_public: true,
           display_name: displayName,
+          top_k_ids: topKIds,
         })
         .eq("id", session.sessionId);
       if (error) throw error;

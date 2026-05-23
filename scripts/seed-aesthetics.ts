@@ -169,26 +169,27 @@ async function fetchCariPageDetails(
 
 type ArenaResult = { description: string; images: string[] };
 
-async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> {
+// How many image blocks to keep per aesthetic. The /compare card and the
+// /aesthetic detail view both render the strip horizontally, so the gallery
+// can comfortably take 20+ thumbs without harming layout.
+const MAX_IMAGES_PER_AESTHETIC = 24;
+const ARENA_PER_PAGE = 50;
+const ARENA_MAX_PAGES = 3;
+
+async function fetchArenaPage(
+  channelSlug: string,
+  page: number
+): Promise<ArenaChannel | null> {
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await fetch(
-        `https://api.are.na/v2/channels/${channelSlug}?page=1&per=20`,
+        `https://api.are.na/v2/channels/${channelSlug}?page=${page}&per=${ARENA_PER_PAGE}`,
         { headers: { Accept: "application/json" } }
       );
-      if (res.ok) {
-        const data: ArenaChannel = await res.json();
-        const description = (data.metadata?.description ?? "").trim();
-        // Prefer `large` (1800px) over `display` (1200px) for crisp covers + zoom.
-        const images = (data.contents ?? [])
-          .filter((c) => c.class === "Image" && (c.image?.large?.url || c.image?.display?.url))
-          .slice(0, 7)
-          .map((c) => (c.image!.large?.url ?? c.image!.display!.url));
-        return { description, images };
-      }
+      if (res.ok) return (await res.json()) as ArenaChannel;
       if (res.status !== 429) return null;
       const wait = Math.min(60_000, 5_000 * attempt);
-      console.log(`    Are.na 429 on ${channelSlug}, waiting ${wait / 1000}s (attempt ${attempt}/5)`);
+      console.log(`    Are.na 429 on ${channelSlug} p${page}, waiting ${wait / 1000}s (attempt ${attempt}/5)`);
       await delay(wait);
     } catch (err) {
       if (attempt === 5) return null;
@@ -197,6 +198,42 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
     }
   }
   return null;
+}
+
+async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> {
+  let description = "";
+  const images: string[] = [];
+
+  for (let page = 1; page <= ARENA_MAX_PAGES; page++) {
+    const data = await fetchArenaPage(channelSlug, page);
+    if (!data) return page === 1 ? null : { description, images };
+
+    if (page === 1) {
+      description = (data.metadata?.description ?? "").trim();
+    }
+
+    // Prefer `large` (1800px) over `display` (1200px) for crisp covers + zoom.
+    const pageImages = (data.contents ?? [])
+      .filter(
+        (c) =>
+          c.class === "Image" &&
+          (c.image?.large?.url || c.image?.display?.url)
+      )
+      .map((c) => c.image!.large?.url ?? c.image!.display!.url);
+
+    images.push(...pageImages);
+
+    if (
+      images.length >= MAX_IMAGES_PER_AESTHETIC ||
+      (data.contents?.length ?? 0) < ARENA_PER_PAGE
+    ) {
+      break;
+    }
+    // Be gentle between page calls on the same channel.
+    await delay(400);
+  }
+
+  return { description, images: images.slice(0, MAX_IMAGES_PER_AESTHETIC) };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -275,7 +312,8 @@ async function main() {
 
     const description = arenaData.description || cariDetails.description;
     // Promote the first Are.na image to be the cover (CARI's own thumbnail is only
-    // 200×200 and looks blurry when scaled up). Remaining images become the gallery.
+    // 200×200 and looks blurry when scaled up). Remaining images become the gallery
+    // and are NOT artificially capped here — the strip in the UI scrolls.
     const [coverFromArena, ...galleryFromArena] = arenaData.images;
 
     const { error } = await supabase
@@ -283,7 +321,7 @@ async function main() {
       .update({
         description: description || null,
         cover_image_url: coverFromArena,
-        gallery_images: galleryFromArena.slice(0, 6),
+        gallery_images: galleryFromArena,
         arena_slug: arenaSlug,
       })
       .eq("slug", slug);

@@ -1,0 +1,26 @@
+---
+description: Coding conventions for the aesthetics ranking app
+alwaysApply: true
+---
+
+# Aesthetics Ranking — Project Conventions
+
+## Stack
+- Next.js 16 App Router, TypeScript strict, Tailwind CSS, shadcn/ui
+- Supabase (anonymous auth + RLS), `@supabase/ssr` for SSR-safe clients
+
+## Architecture
+- `src/lib/guarded-insertion.ts` — ranking algorithm (Guarded Top-5 Insertion). Do NOT replace with ELO or merge sort.
+- `src/hooks/useSession.ts` — wraps the algorithm + Supabase persistence.
+- `src/hooks/useSwipe.ts` — swipe phase (like/skip). State stored in localStorage.
+- localStorage keys: `aesthetics_insertion_state_v1`, `aesthetics_insertion_pool_v1`, `aesthetics_likes_v2`, `aesthetics_swipe_index_v2`, `aesthetics_session_id`.
+
+## Rules
+- Never add `item.rating`, `item.wins`, `item.losses` — ELO is gone; use `item.rank`.
+- `useSession(likedIds)` must be called **once per page**. Do not create a second instance just to fetch aesthetics — load aesthetics separately with `createClient().from("aesthetics").select("*")`.
+- `clearSession()` must clear all localStorage keys listed above.
+- Always use `unoptimized` on `<Image>` for CARI cover images (external domain).
+- Supabase env vars: always add `?? "https://placeholder.supabase.co"` / `?? "placeholder"` to prevent build-time crashes.
+
+## Comparisons budget
+The guarded insertion algorithm guarantees ~18–30 comparisons for N=10–15 liked items. Do not add hard caps or ELO-style confidence thresholds — the algorithm terminates naturally.

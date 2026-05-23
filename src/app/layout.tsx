@@ -67,6 +67,16 @@ export default function RootLayout({
             >
               CARI Institute
             </a>
+            <span className="mx-2 text-white/10">·</span>
+            built by{" "}
+            <a
+              href="https://pozdniakov.github.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white/40 transition-colors"
+            >
+              Ivan Pozdniakov
+            </a>
           </p>
         </footer>
 

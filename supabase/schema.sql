@@ -36,6 +36,12 @@ create table if not exists ranking_sessions (
 -- ALTER would fail (no table yet) and the column would silently be missing.
 alter table ranking_sessions add column if not exists display_name text;
 
+-- Migration: persist the algorithm-computed top-K so /share renders the
+-- exact same ranking the user saw. Without this we'd recompute from raw
+-- comparisons, which (a) doesn't match the Guarded Top-K Insertion order
+-- and (b) ignores undone comparisons that still live in the DB.
+alter table ranking_sessions add column if not exists top_k_ids uuid[];
+
 -- ELO ratings per session per aesthetic
 create table if not exists elo_ratings (
   session_id uuid not null references ranking_sessions(id) on delete cascade,

@@ -59,6 +59,8 @@ export interface Database {
           user_id: string | null;
           share_slug: string | null;
           is_public: boolean;
+          display_name: string | null;
+          top_k_ids: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -67,6 +69,8 @@ export interface Database {
           user_id?: string | null;
           share_slug?: string | null;
           is_public?: boolean;
+          display_name?: string | null;
+          top_k_ids?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -75,6 +79,8 @@ export interface Database {
           user_id?: string | null;
           share_slug?: string | null;
           is_public?: boolean;
+          display_name?: string | null;
+          top_k_ids?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
