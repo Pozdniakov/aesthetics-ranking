@@ -9,8 +9,35 @@ import { useSession } from "@/hooks/useSession";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useNicheScore } from "@/hooks/useNicheScore";
 import { createClient } from "@/lib/supabase/client";
+import { getStoredDisplayName } from "@/lib/session";
 import { EraseRankingButton } from "@/components/EraseRankingButton";
 import type { RatedAesthetic } from "@/hooks/useSession";
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Clipboard API can fail on mobile if an async DB write consumed the
+    // original user activation. The textarea fallback works in more browsers.
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return copied;
+    } catch {
+      return false;
+    }
+  }
+}
 
 export function RankingClient() {
   const swipe = useSwipe([]);
@@ -36,15 +63,21 @@ export function RankingClient() {
     setSharing(true);
     try {
       const slug = nanoid(8);
+      const displayName = getStoredDisplayName();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from("ranking_sessions")
-        .update({ share_slug: slug, is_public: true })
+        .update({
+          share_slug: slug,
+          is_public: true,
+          display_name: displayName,
+        })
         .eq("id", session.sessionId);
+      if (error) throw error;
       const url = `${window.location.origin}/share/${slug}`;
       setShareUrl(url);
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
+      const copied = await copyTextToClipboard(url);
+      toast.success(copied ? "Link copied!" : "Link ready — tap Copy");
     } catch {
       toast.error("Failed to generate link");
     } finally {
@@ -190,7 +223,12 @@ export function RankingClient() {
               <>
                 <p className="text-white/60 text-sm flex-1 break-all">{shareUrl}</p>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("Copied!"); }}
+                  onClick={async () => {
+                    const copied = await copyTextToClipboard(shareUrl);
+                    toast[copied ? "success" : "error"](
+                      copied ? "Copied!" : "Copy failed"
+                    );
+                  }}
                   className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
                 >
                   Copy again
