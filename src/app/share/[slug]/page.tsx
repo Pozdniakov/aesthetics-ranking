@@ -3,6 +3,7 @@ import { RankingList } from "@/components/RankingList";
 import Link from "next/link";
 import type { RatedAesthetic } from "@/hooks/useSession";
 import type { Aesthetic } from "@/lib/supabase/types";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 interface Props {
@@ -15,6 +16,38 @@ interface SessionRow {
   display_name: string | null;
 }
 interface CompRow { winner_id: string; loser_id: string; }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+  const { data: session } = await supabase
+    .from("ranking_sessions")
+    .select("display_name, is_public")
+    .eq("share_slug", slug)
+    .single();
+
+  const row = session as { display_name: string | null; is_public: boolean } | null;
+  if (!row || !row.is_public) {
+    return { title: "Aesthetics Ranking" };
+  }
+
+  const displayName = row.display_name?.trim();
+  const title = displayName
+    ? `${displayName}'s aesthetics ranking`
+    : "Shared aesthetics ranking";
+  const description = displayName
+    ? `See ${displayName}'s top 5 aesthetics and how mainstream or niche their taste is.`
+    : "See this shared top 5 aesthetics and the matching taste profile.";
+
+  // Next.js auto-discovers ./opengraph-image.tsx and adds it to og:image,
+  // so we only set title/description here.
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 export default async function SharePage({ params }: Props) {
   const { slug } = await params;
