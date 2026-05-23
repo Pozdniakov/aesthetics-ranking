@@ -159,7 +159,7 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
       </p>
 
       {left && right && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <AestheticCard aesthetic={left} side="left" onChoose={() => session.choose(left.id, right.id)} />
           <AestheticCard aesthetic={right} side="right" onChoose={() => session.choose(right.id, left.id)} />
         </div>

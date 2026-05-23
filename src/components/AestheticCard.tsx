@@ -93,9 +93,10 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             </span>
           </div>
 
-          {/* Gallery selector — replaces active image */}
+          {/* Gallery selector — replaces active image. Hidden on the
+              tightest screens where two cards have to fit side by side. */}
           {allImages.length > 1 && (
-            <div className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto bg-black/30">
+            <div className="hidden sm:flex gap-1 p-1 flex-shrink-0 overflow-x-auto bg-black/30">
               {allImages.map((url, i) => {
                 const isActive = i === activeIndex;
                 return (
@@ -129,24 +130,24 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             </div>
           )}
 
-          {/* Info */}
-          <div className="flex flex-col gap-1.5 p-4 sm:p-5 text-left flex-1">
+          {/* Info — compacted on mobile so two cards stay side-by-side. */}
+          <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <h2
-                className="font-display text-white font-semibold text-xl leading-[1.05] tracking-tight"
+                className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight"
                 style={{ fontVariationSettings: '"opsz" 96, "SOFT" 60' }}
               >
                 {aesthetic.name}
               </h2>
               {years && (
-                <span className="text-white/35 text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
+                <span className="text-white/35 text-[9px] sm:text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
                   {years}
                 </span>
               )}
             </div>
 
             {aesthetic.description && (
-              <p className="text-white/65 text-sm leading-relaxed whitespace-pre-line">
+              <p className="text-white/65 text-[11px] sm:text-sm leading-snug sm:leading-relaxed whitespace-pre-line line-clamp-3 sm:line-clamp-none">
                 {aesthetic.description}
               </p>
             )}
@@ -156,7 +157,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 inline-flex items-center gap-1.5 self-start text-white/35 hover:text-white text-[11px] uppercase tracking-[0.15em] transition-colors pt-1"
+              className="hidden sm:inline-flex mt-1 items-center gap-1.5 self-start text-white/35 hover:text-white text-[11px] uppercase tracking-[0.15em] transition-colors pt-1"
             >
               <span>View on CARI</span>
               <ArrowUpRight className="w-3 h-3" strokeWidth={1.75} />

@@ -89,7 +89,7 @@ export function SwipeCard({
             <button
               type="button"
               onClick={() => activeUrl && setLightboxIndex(activeIndex)}
-              className="relative w-full bg-neutral-800 group cursor-zoom-in flex-shrink-0 md:flex-1 md:min-h-0 aspect-[4/3] md:aspect-auto"
+              className="relative w-full bg-neutral-800 group cursor-zoom-in flex-shrink-0 md:flex-1 md:min-h-0 aspect-[16/10] sm:aspect-[3/2] md:aspect-auto"
               aria-label="Zoom image"
             >
               {activeUrl ? (
@@ -145,39 +145,48 @@ export function SwipeCard({
             )}
           </div>
 
-          {/* Text side — scrolls internally */}
-          <div className="p-5 sm:p-6 flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
-            <div className="flex items-baseline justify-between gap-3 flex-wrap">
-              <h2
-                className="font-display text-white font-semibold text-2xl md:text-3xl leading-[1.05] tracking-tight"
-                style={{ fontVariationSettings: '"opsz" 144, "SOFT" 60' }}
+          {/* Text side — scrolls internally. On mobile we tighten padding
+              and inline the CARI link with the title row instead of pinning
+              it to the bottom: that wasted a band of empty space when the
+              description was short. */}
+          <div className="p-3.5 sm:p-5 md:p-6 flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <h2
+                  className="font-display text-white font-semibold text-xl sm:text-2xl md:text-3xl leading-[1.05] tracking-tight"
+                  style={{ fontVariationSettings: '"opsz" 144, "SOFT" 60' }}
+                >
+                  {aesthetic.name}
+                </h2>
+                {years && (
+                  <span className="block text-white/40 text-[11px] sm:text-xs font-mono tabular-nums mt-1">
+                    {years}
+                  </span>
+                )}
+              </div>
+              <a
+                href={`https://cari.institute/aesthetics/${aesthetic.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 sm:w-auto sm:h-auto sm:px-2 sm:py-1 rounded-full sm:rounded-md border border-white/10 sm:border-transparent text-white/45 hover:text-white sm:hover:bg-white/10 transition-colors"
+                aria-label="View on CARI"
               >
-                {aesthetic.name}
-              </h2>
-              {years && (
-                <span className="text-white/40 text-xs font-mono tabular-nums whitespace-nowrap">
-                  {years}
+                <ArrowUpRight
+                  className="w-3.5 h-3.5 sm:w-3 sm:h-3"
+                  strokeWidth={1.75}
+                />
+                <span className="hidden sm:inline ml-1 text-[10px] uppercase tracking-[0.15em]">
+                  CARI
                 </span>
-              )}
+              </a>
             </div>
             {aesthetic.description ? (
-              <p className="text-white/75 text-[15px] leading-relaxed whitespace-pre-line">
+              <p className="text-white/75 text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">
                 {aesthetic.description}
               </p>
             ) : (
               <p className="text-white/30 text-sm italic">No description</p>
             )}
-
-            {/* CARI link */}
-            <a
-              href={`https://cari.institute/aesthetics/${aesthetic.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-auto inline-flex items-center gap-1.5 self-start text-white/40 hover:text-white text-xs uppercase tracking-[0.15em] transition-colors pt-2"
-            >
-              <span>View on CARI</span>
-              <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.75} />
-            </a>
           </div>
         </div>
 

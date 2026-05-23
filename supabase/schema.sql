@@ -15,13 +15,10 @@ create table if not exists aesthetics (
   arena_slug text
 );
 
--- Migration: add enriched columns if table already exists
+-- Migration: add enriched columns if aesthetics already exists
 alter table aesthetics add column if not exists description text;
 alter table aesthetics add column if not exists gallery_images text[] not null default '{}';
 alter table aesthetics add column if not exists arena_slug text;
-
--- Migration: add display_name to ranking_sessions
-alter table ranking_sessions add column if not exists display_name text;
 
 -- Ranking sessions (one per user flow)
 create table if not exists ranking_sessions (
@@ -29,9 +26,15 @@ create table if not exists ranking_sessions (
   user_id uuid references auth.users(id) on delete cascade,
   share_slug text unique,
   is_public boolean not null default false,
+  display_name text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration: add display_name to ranking_sessions for older deployments.
+-- Must come AFTER the create table above, otherwise on a fresh DB the
+-- ALTER would fail (no table yet) and the column would silently be missing.
+alter table ranking_sessions add column if not exists display_name text;
 
 -- ELO ratings per session per aesthetic
 create table if not exists elo_ratings (
