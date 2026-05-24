@@ -95,15 +95,17 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
           </span>
         </button>
 
-        {/* Gallery thumbs — horizontally scrollable strip. `touch-pan-x`
-            lets iOS Safari treat the strip as a horizontal pan target;
-            `useHorizontalWheel` reroutes desktop mouse-wheel input. */}
-        {allImages.length > 1 && (
-          <div
-            ref={galleryRef}
-            className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin"
-          >
-            {allImages.map((url, i) => {
+        {/* Gallery thumbs — always rendered (with an invisible placeholder
+            when there are no extra images) so the bottom Choose button
+            stays at the same y-offset on every card. Otherwise the button
+            would bob up and down between comparisons depending on whether
+            the current aesthetic happens to have a gallery. */}
+        <div
+          ref={galleryRef}
+          className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin h-10 sm:h-14 md:h-16"
+        >
+          {allImages.length > 1 ? (
+            allImages.map((url, i) => {
               const isActive = i === activeIndex;
               return (
                 <button
@@ -128,21 +130,27 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
                   />
                 </button>
               );
-            })}
-          </div>
-        )}
+            })
+          ) : (
+            <span className="sr-only">No additional images</span>
+          )}
+        </div>
 
-        {/* Info — compacted on mobile so two cards stay side-by-side. */}
+        {/* Info — description scrolls inside its own region and the More
+            info link is hidden on mobile. Variable title height does not
+            move the Choose button because the info section is `flex-1`,
+            so any extra title rows are absorbed by the scrollable
+            description, not the bottom button. */}
         <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1 min-h-0">
-          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+          <div className="flex items-baseline justify-between gap-2">
             <h2
-              className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight"
+              className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight min-w-0 break-words"
               style={{ fontVariationSettings: '"opsz" 96, "SOFT" 60' }}
             >
               {aesthetic.name}
             </h2>
             {years && (
-              <span className="text-white/35 text-[9px] sm:text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
+              <span className="flex-shrink-0 text-white/35 text-[9px] sm:text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
                 {years}
               </span>
             )}
