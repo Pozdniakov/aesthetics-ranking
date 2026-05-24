@@ -60,7 +60,7 @@ export function AestheticCard({ aesthetic, side }: Props) {
             if (allImages.length > 0) setLightboxIndex(activeIndex);
           }}
           aria-label="Zoom image"
-          className="group/img relative w-full aspect-[4/3] bg-neutral-800 overflow-hidden flex-shrink-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          className="group/img relative w-full aspect-[3/2] bg-neutral-800 overflow-hidden flex-shrink-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
           {activeUrl ? (
             <Image

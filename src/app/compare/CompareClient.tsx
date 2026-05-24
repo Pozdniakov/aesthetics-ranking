@@ -146,12 +146,10 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
 
   return (
     // Container locks to exactly the visible viewport between the sticky
-    // site header (~52px) and the site footer (~51px). The previous
-    // `100dvh - 4rem` calc only accounted for the header and ignored the
-    // footer, so the body overflowed by the footer's height and the
-    // page scrolled — exactly the behaviour the user reported. The
-    // 7.5rem matches the SwipeCard container in Phase 1.
-    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden">
+    // site header (~52px) and the site footer (~51px). 7.5rem matches the
+    // SwipeCard container in Phase 1 and prevents the body from scrolling
+    // past either bar.
+    <div className="flex flex-col gap-2 sm:gap-3 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden">
       {/* Top bar — Undo lives here so it stays in the same place across
           both phases (in phase 1 it sits next to the StageIndicator too). */}
       <div className="flex items-center gap-3 flex-shrink-0">
@@ -176,9 +174,26 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
         </div>
       </div>
 
-      <p className="text-white/40 text-xs text-center tracking-[0.2em] uppercase flex-shrink-0">
-        Which do you prefer?
-      </p>
+      {/* Combined prompt row: rotate hint on the left (only when the
+          viewport is small and portrait), the prompt absolutely centred
+          so its position is unaffected by its neighbours, and `Can't
+          decide` on the right. Replaces the previous standalone bottom
+          row, which freed ~36px of vertical space for the descriptions. */}
+      <div className="relative flex items-center flex-shrink-0">
+        <p className="hidden max-sm:portrait:inline-flex items-center gap-1 text-white/35 text-[10px] flex-shrink-0">
+          <RotateCw className="w-3 h-3" strokeWidth={1.75} />
+          <span>Rotate phone</span>
+        </p>
+        <p className="absolute inset-x-0 text-white/40 text-xs text-center tracking-[0.2em] uppercase pointer-events-none">
+          Which do you prefer?
+        </p>
+        <button
+          onClick={session.skip}
+          className="ml-auto text-white/30 hover:text-white/60 text-xs sm:text-sm transition-colors flex-shrink-0 relative z-10"
+        >
+          Can&apos;t decide
+        </button>
+      </div>
 
       {left && right && (
         // `grid-rows-1` with `minmax(0, 1fr)` (Tailwind default) forces the
@@ -220,19 +235,6 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-3 flex-shrink-0">
-        {/* Rotate hint — only on narrow portrait viewports. */}
-        <p className="hidden max-sm:portrait:inline-flex items-center gap-1.5 text-white/35 text-[11px]">
-          <RotateCw className="w-3 h-3" strokeWidth={1.75} />
-          <span>Rotate phone for a wider view</span>
-        </p>
-        <button
-          onClick={session.skip}
-          className="ml-auto text-white/30 hover:text-white/60 text-xs sm:text-sm transition-colors"
-        >
-          Can&apos;t decide
-        </button>
-      </div>
     </div>
   );
 }
