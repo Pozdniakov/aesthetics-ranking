@@ -146,10 +146,12 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
 
   return (
     // Container locks to exactly the visible viewport between the sticky
-    // site header (~52px) and the site footer (~51px). 7.5rem matches the
-    // SwipeCard container in Phase 1 and prevents the body from scrolling
-    // past either bar.
-    <div className="flex flex-col gap-2 sm:gap-3 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden">
+    // site header (~52px) and the site footer (~51px). 6.5rem (104px)
+    // matches the real header+footer height almost exactly, leaving no
+    // wasted band above the footer. The smaller `py-2` on mobile gives
+    // another ~8px of breathing room to the description region without
+    // touching the action buttons or the prompt row.
+    <div className="flex flex-col gap-2 sm:gap-3 max-w-3xl mx-auto w-full px-3 sm:px-4 py-2 sm:py-4 h-[calc(100dvh-6.5rem)] min-h-[520px] overflow-hidden">
       {/* Top bar — Undo lives here so it stays in the same place across
           both phases (in phase 1 it sits next to the StageIndicator too). */}
       <div className="flex items-center gap-3 flex-shrink-0">

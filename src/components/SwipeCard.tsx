@@ -89,7 +89,7 @@ export function SwipeCard({
 
   return (
     <>
-      <div className="flex flex-col gap-3 max-w-md md:max-w-4xl mx-auto w-full px-3 sm:px-4 pt-4 pb-4 h-[calc(100dvh-7.5rem)] min-h-[520px]">
+      <div className="flex flex-col gap-3 max-w-md md:max-w-4xl mx-auto w-full px-3 sm:px-4 pt-2 pb-2 sm:pt-4 sm:pb-4 h-[calc(100dvh-6.5rem)] min-h-[520px]">
         {/* Top bar: Undo + two-stage progress indicator */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button

@@ -36,31 +36,37 @@ export function HeaderNav() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  // Whitespace-nowrap on every link is the difference between a slim
+  // single-row header and one that wraps onto two lines on narrow
+  // viewports. The labels are intentionally shorter on `<sm` so the row
+  // always fits next to the logo without growing the header.
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-3 sm:gap-5">
       {hasProgress ? (
         <>
-          <EraseRankingButton className="text-white/60 hover:text-white text-sm transition-colors">
-            Erase ranking & compare again
+          <EraseRankingButton className="text-white/60 hover:text-white text-sm transition-colors whitespace-nowrap">
+            <span className="hidden sm:inline">Erase ranking &amp; compare again</span>
+            <span className="sm:hidden">Reset</span>
           </EraseRankingButton>
           <Link
             href="/ranking"
-            className="text-white/60 hover:text-white text-sm transition-colors"
+            className="text-white/60 hover:text-white text-sm transition-colors whitespace-nowrap"
           >
-            My Ranking
+            <span className="hidden sm:inline">My Ranking</span>
+            <span className="sm:hidden">Ranking</span>
           </Link>
         </>
       ) : (
         <Link
           href="/compare"
-          className="text-white/60 hover:text-white text-sm transition-colors"
+          className="text-white/60 hover:text-white text-sm transition-colors whitespace-nowrap"
         >
           Compare
         </Link>
       )}
       <Link
         href="/global"
-        className="text-white/60 hover:text-white text-sm transition-colors"
+        className="text-white/60 hover:text-white text-sm transition-colors whitespace-nowrap"
       >
         Global
       </Link>
