@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowUpRight, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+} from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -21,6 +27,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
     ...(aesthetic.cover_image_url ? [aesthetic.cover_image_url] : []),
     ...gallery,
   ];
+  const galleryRef = useHorizontalWheel<HTMLDivElement>();
 
   useEffect(() => {
     setActiveIndex(0);
@@ -37,42 +44,37 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
     : aesthetic.decade ?? null;
 
   const activeUrl = allImages[activeIndex];
-  const Arrow = isLeft ? ChevronLeft : ChevronRight;
-
-  const handleChooseKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onChoose();
-    }
-  };
+  const Chevron = isLeft ? ChevronLeft : ChevronRight;
 
   return (
     <>
-      {/* The whole card is the "choose" target, but it's a clickable div
-          rather than a real <button> so that we can put scrollable strips
-          and other interactive children (zoom, CARI link, gallery thumbs)
-          inside it without nesting buttons. Without this refactor, iOS
-          Safari treated horizontal pan on the gallery as a tap on the
-          outer button and the strip never scrolled. */}
+      {/* The outer container is no longer the "choose" target. Testers
+          kept tapping the cover image expecting a zoom because that's the
+          universal pattern; choose moved to an explicit button at the
+          bottom so the affordance is unambiguous on mobile (no hover). */}
       <div
-        onClick={onChoose}
-        onKeyDown={handleChooseKey}
-        role="button"
-        tabIndex={0}
-        aria-label={`Choose ${aesthetic.name}`}
-        className={`group relative flex flex-col w-full h-full rounded-2xl overflow-hidden border bg-neutral-900 border-white/10 cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 active:scale-[0.985] text-left ${
-          isLeft ? "hover:bg-indigo-950/25" : "hover:bg-rose-950/25"
+        className={`relative flex flex-col w-full h-full rounded-2xl overflow-hidden border bg-neutral-900 transition-colors ${
+          isLeft
+            ? "border-indigo-500/15 hover:border-indigo-400/30"
+            : "border-rose-500/15 hover:border-rose-400/30"
         }`}
       >
-        {/* Active cover */}
-        <div className="relative w-full aspect-[4/3] bg-neutral-800 overflow-hidden flex-shrink-0">
+        {/* Cover — tapping it opens the zoom lightbox. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (allImages.length > 0) setLightboxIndex(activeIndex);
+          }}
+          aria-label="Zoom image"
+          className="group/img relative w-full aspect-[4/3] bg-neutral-800 overflow-hidden flex-shrink-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        >
           {activeUrl ? (
             <Image
               key={activeUrl}
               src={activeUrl}
               alt={aesthetic.name}
               fill
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.03] animate-in fade-in duration-200"
+              className="object-cover transition-transform duration-500 group-hover/img:scale-[1.03] animate-in fade-in duration-200"
               sizes="(max-width: 640px) 100vw, 50vw"
               unoptimized
               priority
@@ -82,41 +84,24 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
               No image
             </div>
           )}
-          <div
-            className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-              isLeft ? "bg-indigo-600/15" : "bg-rose-600/15"
-            }`}
-          />
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
-            <Arrow
-              className="w-12 h-12 text-white/85 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity duration-150 pointer-events-none bg-black/20">
+            <ZoomIn
+              className="w-10 h-10 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
               strokeWidth={1.4}
             />
           </div>
-
-          {/* Zoom — separate action, must not trigger choose */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (allImages.length > 0) setLightboxIndex(activeIndex);
-            }}
-            aria-label="Zoom image"
-            className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/80 hover:text-white hover:bg-black/75 transition-colors cursor-zoom-in"
-          >
+          <span className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/85 opacity-80 sm:opacity-0 sm:group-hover/img:opacity-100 transition-opacity">
             <ZoomIn className="w-4 h-4" strokeWidth={1.75} />
-          </button>
-        </div>
+          </span>
+        </button>
 
-        {/* Gallery selector — horizontally scrollable strip of thumbs. The
-            `touch-pan-x` class tells the browser this region is for
-            horizontal panning, which is what makes scroll actually work on
-            iOS Safari. Click events stop here so they never bubble to the
-            outer card's choose handler. */}
+        {/* Gallery thumbs — horizontally scrollable strip. `touch-pan-x`
+            lets iOS Safari treat the strip as a horizontal pan target;
+            `useHorizontalWheel` reroutes desktop mouse-wheel input. */}
         {allImages.length > 1 && (
           <div
-            className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30"
-            onClick={(e) => e.stopPropagation()}
+            ref={galleryRef}
+            className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin"
           >
             {allImages.map((url, i) => {
               const isActive = i === activeIndex;
@@ -124,10 +109,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
                 <button
                   key={i}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveIndex(i);
-                  }}
+                  onClick={() => setActiveIndex(i)}
                   aria-label={`Show image ${i + 1}`}
                   aria-pressed={isActive}
                   className={`relative flex-shrink-0 w-10 h-8 sm:w-14 sm:h-12 md:w-16 md:h-14 rounded-md overflow-hidden bg-neutral-800 cursor-pointer transition-all ${
@@ -150,9 +132,7 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
           </div>
         )}
 
-        {/* Info — compacted on mobile so two cards stay side-by-side. The
-            body grows to fill the available height; the description can
-            scroll within the card if it overflows. */}
+        {/* Info — compacted on mobile so two cards stay side-by-side. */}
         <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1 min-h-0">
           <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <h2
@@ -178,13 +158,30 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             href={`/aesthetics/${aesthetic.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
             className="hidden sm:inline-flex mt-1 items-center gap-1.5 self-start text-white/35 hover:text-white text-[11px] uppercase tracking-[0.15em] transition-colors pt-1"
           >
             <span>More info</span>
             <ArrowUpRight className="w-3 h-3" strokeWidth={1.75} />
           </a>
         </div>
+
+        {/* The choose action — explicit, prominent, side-coded. The chevron
+            points toward this card from the central gap so it reads as
+            "pick the side". */}
+        <button
+          type="button"
+          onClick={onChoose}
+          aria-label={`Choose ${aesthetic.name}`}
+          className={`flex-shrink-0 w-full py-2.5 sm:py-3 flex items-center justify-center gap-1.5 sm:gap-2 text-sm font-medium tracking-wide border-t transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 active:scale-[0.985] ${
+            isLeft
+              ? "bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-500/30 text-indigo-100"
+              : "bg-rose-950/40 hover:bg-rose-900/60 border-rose-500/30 text-rose-100"
+          }`}
+        >
+          {isLeft && <Chevron className="w-4 h-4" strokeWidth={2} />}
+          <span>Choose this</span>
+          {!isLeft && <Chevron className="w-4 h-4" strokeWidth={2} />}
+        </button>
       </div>
 
       {lightboxIndex !== null && allImages.length > 0 && (

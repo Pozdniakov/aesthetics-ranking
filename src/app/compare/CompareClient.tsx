@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Undo2 } from "lucide-react";
 import { SwipeCard } from "@/components/SwipeCard";
 import { AestheticCard } from "@/components/AestheticCard";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -146,14 +146,29 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
 
   return (
     <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 min-h-[calc(100dvh-4rem)]">
-      <StageIndicator
-        currentStage={2}
-        stage1={{ done: swipe.likedIds.length, total: swipe.total }}
-        stage2={{
-          done: session.totalComparisons,
-          estimate: session.estimatedTotal,
-        }}
-      />
+      {/* Top bar — Undo lives here so it stays in the same place across
+          both phases (in phase 1 it sits next to the StageIndicator too). */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <button
+          onClick={session.undo}
+          disabled={!session.canUndo}
+          className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-sm transition-colors"
+          aria-label="Undo last comparison"
+        >
+          <Undo2 className="w-4 h-4" strokeWidth={1.75} />
+          <span className="hidden sm:inline">Undo</span>
+        </button>
+        <div className="flex-1 min-w-0">
+          <StageIndicator
+            currentStage={2}
+            stage1={{ done: swipe.likedIds.length, total: swipe.total }}
+            stage2={{
+              done: session.totalComparisons,
+              estimate: session.estimatedTotal,
+            }}
+          />
+        </div>
+      </div>
 
       <p className="text-white/40 text-xs text-center tracking-[0.2em] uppercase">
         Which do you prefer?
@@ -172,18 +187,12 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
           <RotateCw className="w-3 h-3" strokeWidth={1.75} />
           <span>Rotate phone for a wider view</span>
         </p>
-        <div className="flex items-center gap-4 ml-auto">
-          <button onClick={session.skip} className="text-white/20 hover:text-white/50 text-sm transition-colors">
-            Can&apos;t decide
-          </button>
-          <button
-            onClick={session.undo}
-            disabled={!session.canUndo}
-            className="flex items-center gap-1 text-white/20 hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed text-sm transition-colors"
-          >
-            ↩ Undo
-          </button>
-        </div>
+        <button
+          onClick={session.skip}
+          className="ml-auto text-white/30 hover:text-white/60 text-sm transition-colors"
+        >
+          Can&apos;t decide
+        </button>
       </div>
     </div>
   );

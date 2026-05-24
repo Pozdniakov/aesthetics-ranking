@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { StageIndicator } from "@/components/StageIndicator";
+import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -42,10 +43,37 @@ export function SwipeCard({
   // Reset to the cover whenever the aesthetic changes.
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const galleryRef = useHorizontalWheel<HTMLDivElement>();
 
   useEffect(() => {
     setActiveIndex(0);
   }, [aesthetic.id]);
+
+  // Keyboard navigation through the gallery thumbnails. Skip when the
+  // user is typing into a field (e.g. the name gate input on first run).
+  useEffect(() => {
+    if (allImages.length <= 1) return;
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setActiveIndex((i) => (i - 1 + allImages.length) % allImages.length);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setActiveIndex((i) => (i + 1) % allImages.length);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [allImages.length]);
 
   const years = aesthetic.start_year
     ? `${aesthetic.start_year}${
@@ -114,7 +142,10 @@ export function SwipeCard({
             </button>
 
             {allImages.length > 1 && (
-              <div className="flex gap-1 p-1 overflow-x-auto flex-shrink-0 scrollbar-thin">
+              <div
+                ref={galleryRef}
+                className="flex gap-1 p-1 overflow-x-auto flex-shrink-0 scrollbar-thin"
+              >
                 {allImages.map((url, i) => {
                   const isActive = i === activeIndex;
                   return (
