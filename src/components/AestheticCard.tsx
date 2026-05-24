@@ -89,15 +89,15 @@ export function AestheticCard({ aesthetic, side }: Props) {
           </span>
         </button>
 
-        {/* Gallery thumbs — horizontally scrollable strip. `touch-pan-x`
-            lets iOS Safari handle the horizontal pan; `useHorizontalWheel`
-            reroutes desktop mouse-wheel input. */}
-        {allImages.length > 1 && (
-          <div
-            ref={galleryRef}
-            className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin"
-          >
-            {allImages.map((url, i) => {
+        {/* Gallery thumbs — always render this band even when there are
+            no extra images, so the title row below it starts at the same
+            y-coordinate on every card and between comparisons. */}
+        <div
+          ref={galleryRef}
+          className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin h-10 sm:h-14 md:h-16"
+        >
+          {allImages.length > 1 ? (
+            allImages.map((url, i) => {
               const isActive = i === activeIndex;
               return (
                 <button
@@ -122,9 +122,11 @@ export function AestheticCard({ aesthetic, side }: Props) {
                   />
                 </button>
               );
-            })}
-          </div>
-        )}
+            })
+          ) : (
+            <span className="sr-only">No additional images</span>
+          )}
+        </div>
 
         {/* Info — description scrolls inside its own region; the More
             info link is hidden on mobile. */}

@@ -145,7 +145,11 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
   const [left, right] = session.currentPair ?? [null, null];
 
   return (
-    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 min-h-[calc(100dvh-4rem)]">
+    // Container locks to exactly the visible viewport (`dvh` follows the
+    // mobile URL bar). With a fixed height nothing can push the bottom
+    // action bar out of view, so the user never has to scroll the page
+    // and the progress indicator at the top stays visible.
+    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-4rem)] overflow-hidden">
       {/* Top bar — Undo lives here so it stays in the same place across
           both phases (in phase 1 it sits next to the StageIndicator too). */}
       <div className="flex items-center gap-3 flex-shrink-0">
@@ -175,7 +179,12 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
       </p>
 
       {left && right && (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-1 min-h-0">
+        // `grid-rows-1` with `minmax(0, 1fr)` (Tailwind default) forces the
+        // single row to fill the available flex space instead of growing
+        // to fit content. Combined with `h-full` on each card it makes
+        // every card the same height — both between left/right and
+        // between consecutive comparisons.
+        <div className="grid grid-cols-2 grid-rows-1 gap-2 sm:gap-3 flex-1 min-h-0">
           <AestheticCard aesthetic={left} side="left" />
           <AestheticCard aesthetic={right} side="right" />
         </div>
@@ -192,7 +201,7 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
           onClick={() => left && right && session.choose(left.id, right.id)}
           disabled={!left || !right}
           aria-label={left ? `Choose ${left.name}` : "Choose left"}
-          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 rounded-xl border border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 active:scale-[0.985] text-indigo-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3.5 sm:py-4 rounded-xl border border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 active:scale-[0.985] text-indigo-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
         >
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
           <span>Choose left</span>
@@ -202,7 +211,7 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
           onClick={() => left && right && session.choose(right.id, left.id)}
           disabled={!left || !right}
           aria-label={right ? `Choose ${right.name}` : "Choose right"}
-          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 active:scale-[0.985] text-rose-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
+          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3.5 sm:py-4 rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 active:scale-[0.985] text-rose-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
         >
           <span>Choose right</span>
           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
