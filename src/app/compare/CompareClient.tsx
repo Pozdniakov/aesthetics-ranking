@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCw, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCw, Undo2 } from "lucide-react";
 import { SwipeCard } from "@/components/SwipeCard";
 import { AestheticCard } from "@/components/AestheticCard";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -170,18 +170,46 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
         </div>
       </div>
 
-      <p className="text-white/40 text-xs text-center tracking-[0.2em] uppercase">
+      <p className="text-white/40 text-xs text-center tracking-[0.2em] uppercase flex-shrink-0">
         Which do you prefer?
       </p>
 
       {left && right && (
         <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-1 min-h-0">
-          <AestheticCard aesthetic={left} side="left" onChoose={() => session.choose(left.id, right.id)} />
-          <AestheticCard aesthetic={right} side="right" onChoose={() => session.choose(right.id, left.id)} />
+          <AestheticCard aesthetic={left} side="left" />
+          <AestheticCard aesthetic={right} side="right" />
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 pt-1">
+      {/* Action bar — pinned at the bottom of the flex column so the two
+          choose buttons always sit at the same y-coordinate, no matter
+          what the cards above contain. Colour-coded to match each card's
+          border (indigo = left, rose = right) and shevroned for the
+          left/right mapping. */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => left && right && session.choose(left.id, right.id)}
+          disabled={!left || !right}
+          aria-label={left ? `Choose ${left.name}` : "Choose left"}
+          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 rounded-xl border border-indigo-500/30 bg-indigo-950/40 hover:bg-indigo-900/60 active:scale-[0.985] text-indigo-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+        >
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
+          <span>Choose left</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => left && right && session.choose(right.id, left.id)}
+          disabled={!left || !right}
+          aria-label={right ? `Choose ${right.name}` : "Choose right"}
+          className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 active:scale-[0.985] text-rose-100 font-medium text-sm sm:text-base tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50"
+        >
+          <span>Choose right</span>
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2} />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-shrink-0">
         {/* Rotate hint — only on narrow portrait viewports. */}
         <p className="hidden max-sm:portrait:inline-flex items-center gap-1.5 text-white/35 text-[11px]">
           <RotateCw className="w-3 h-3" strokeWidth={1.75} />
@@ -189,7 +217,7 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
         </p>
         <button
           onClick={session.skip}
-          className="ml-auto text-white/30 hover:text-white/60 text-sm transition-colors"
+          className="ml-auto text-white/30 hover:text-white/60 text-xs sm:text-sm transition-colors"
         >
           Can&apos;t decide
         </button>

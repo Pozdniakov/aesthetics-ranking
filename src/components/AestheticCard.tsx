@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import {
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
-  ZoomIn,
-} from "lucide-react";
+import { ArrowUpRight, ZoomIn } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
 import type { Aesthetic } from "@/lib/supabase/types";
@@ -15,10 +10,9 @@ import type { Aesthetic } from "@/lib/supabase/types";
 interface Props {
   aesthetic: Aesthetic;
   side: "left" | "right";
-  onChoose: () => void;
 }
 
-export function AestheticCard({ aesthetic, side, onChoose }: Props) {
+export function AestheticCard({ aesthetic, side }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const isLeft = side === "left";
@@ -44,19 +38,19 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
     : aesthetic.decade ?? null;
 
   const activeUrl = allImages[activeIndex];
-  const Chevron = isLeft ? ChevronLeft : ChevronRight;
 
   return (
     <>
-      {/* The outer container is no longer the "choose" target. Testers
-          kept tapping the cover image expecting a zoom because that's the
-          universal pattern; choose moved to an explicit button at the
-          bottom so the affordance is unambiguous on mobile (no hover). */}
+      {/* The card is now display-only — choosing happens via the global
+          action bar pinned at the bottom of the viewport. Tapping the
+          image opens the zoom lightbox; gallery thumbs switch the active
+          image. Border is colour-coded so users can match each card to
+          its corresponding bottom-bar button at a glance. */}
       <div
         className={`relative flex flex-col w-full h-full rounded-2xl overflow-hidden border bg-neutral-900 transition-colors ${
           isLeft
-            ? "border-indigo-500/15 hover:border-indigo-400/30"
-            : "border-rose-500/15 hover:border-rose-400/30"
+            ? "border-indigo-500/15"
+            : "border-rose-500/15"
         }`}
       >
         {/* Cover — tapping it opens the zoom lightbox. */}
@@ -95,17 +89,15 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
           </span>
         </button>
 
-        {/* Gallery thumbs — always rendered (with an invisible placeholder
-            when there are no extra images) so the bottom Choose button
-            stays at the same y-offset on every card. Otherwise the button
-            would bob up and down between comparisons depending on whether
-            the current aesthetic happens to have a gallery. */}
-        <div
-          ref={galleryRef}
-          className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin h-10 sm:h-14 md:h-16"
-        >
-          {allImages.length > 1 ? (
-            allImages.map((url, i) => {
+        {/* Gallery thumbs — horizontally scrollable strip. `touch-pan-x`
+            lets iOS Safari handle the horizontal pan; `useHorizontalWheel`
+            reroutes desktop mouse-wheel input. */}
+        {allImages.length > 1 && (
+          <div
+            ref={galleryRef}
+            className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin"
+          >
+            {allImages.map((url, i) => {
               const isActive = i === activeIndex;
               return (
                 <button
@@ -130,17 +122,12 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
                   />
                 </button>
               );
-            })
-          ) : (
-            <span className="sr-only">No additional images</span>
-          )}
-        </div>
+            })}
+          </div>
+        )}
 
-        {/* Info — description scrolls inside its own region and the More
-            info link is hidden on mobile. Variable title height does not
-            move the Choose button because the info section is `flex-1`,
-            so any extra title rows are absorbed by the scrollable
-            description, not the bottom button. */}
+        {/* Info — description scrolls inside its own region; the More
+            info link is hidden on mobile. */}
         <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1 min-h-0">
           <div className="flex items-baseline justify-between gap-2">
             <h2
@@ -172,24 +159,6 @@ export function AestheticCard({ aesthetic, side, onChoose }: Props) {
             <ArrowUpRight className="w-3 h-3" strokeWidth={1.75} />
           </a>
         </div>
-
-        {/* The choose action — explicit, prominent, side-coded. The chevron
-            points toward this card from the central gap so it reads as
-            "pick the side". */}
-        <button
-          type="button"
-          onClick={onChoose}
-          aria-label={`Choose ${aesthetic.name}`}
-          className={`flex-shrink-0 w-full py-2.5 sm:py-3 flex items-center justify-center gap-1.5 sm:gap-2 text-sm font-medium tracking-wide border-t transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 active:scale-[0.985] ${
-            isLeft
-              ? "bg-indigo-950/40 hover:bg-indigo-900/60 border-indigo-500/30 text-indigo-100"
-              : "bg-rose-950/40 hover:bg-rose-900/60 border-rose-500/30 text-rose-100"
-          }`}
-        >
-          {isLeft && <Chevron className="w-4 h-4" strokeWidth={2} />}
-          <span>Choose this</span>
-          {!isLeft && <Chevron className="w-4 h-4" strokeWidth={2} />}
-        </button>
       </div>
 
       {lightboxIndex !== null && allImages.length > 0 && (
