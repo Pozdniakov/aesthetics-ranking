@@ -145,11 +145,13 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
   const [left, right] = session.currentPair ?? [null, null];
 
   return (
-    // Container locks to exactly the visible viewport (`dvh` follows the
-    // mobile URL bar). With a fixed height nothing can push the bottom
-    // action bar out of view, so the user never has to scroll the page
-    // and the progress indicator at the top stays visible.
-    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-4rem)] overflow-hidden">
+    // Container locks to exactly the visible viewport between the sticky
+    // site header (~52px) and the site footer (~51px). The previous
+    // `100dvh - 4rem` calc only accounted for the header and ignored the
+    // footer, so the body overflowed by the footer's height and the
+    // page scrolled — exactly the behaviour the user reported. The
+    // 7.5rem matches the SwipeCard container in Phase 1.
+    <div className="flex flex-col gap-3 sm:gap-4 max-w-3xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-6 h-[calc(100dvh-7.5rem)] min-h-[520px] overflow-hidden">
       {/* Top bar — Undo lives here so it stays in the same place across
           both phases (in phase 1 it sits next to the StageIndicator too). */}
       <div className="flex items-center gap-3 flex-shrink-0">
