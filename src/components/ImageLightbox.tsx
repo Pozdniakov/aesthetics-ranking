@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import type { GalleryItem } from "@/lib/gallery";
 
 interface Props {
-  images: string[];
+  /**
+   * Accepts either plain URL strings (legacy callers) or full `GalleryItem`
+   * objects with per-image attribution. Strings are normalised into the
+   * richer shape internally so the rendering code only deals with one case.
+   */
+  images: Array<string | GalleryItem>;
   initialIndex?: number;
   alt?: string;
   onClose: () => void;
@@ -15,7 +21,15 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
   const [zoomed, setZoomed] = useState(false);
   const [origin, setOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
 
-  const total = images.length;
+  // Normalise legacy URL-only inputs into the rich GalleryItem shape so
+  // the rest of this component can blindly read `current.source_url` etc.
+  const items: GalleryItem[] = images.map((img) =>
+    typeof img === "string"
+      ? { url: img, source_url: null, source_title: null }
+      : img
+  );
+  const total = items.length;
+  const current = items[index];
 
   const next = useCallback(() => {
     setZoomed(false);
@@ -109,7 +123,7 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={index}
-          src={images[index]}
+          src={current.url}
           alt={alt}
           onClick={handleImageClick}
           draggable={false}
@@ -123,11 +137,40 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         />
       </div>
 
-      {total > 1 && (
-        <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-[10px] font-mono uppercase tracking-widest select-none">
-          {zoomed ? "tap image to zoom out" : "tap image to zoom · ← → to navigate"}
-        </p>
-      )}
+      {/* Bottom bar: per-image source attribution on the left, navigation
+          hint on the right. Stops click-through so tapping the source link
+          doesn't close the lightbox. */}
+      <div
+        className="absolute inset-x-0 bottom-3 sm:bottom-4 flex items-center justify-center gap-3 px-4 pointer-events-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {current.source_url ? (
+          <a
+            href={current.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-auto inline-flex items-center gap-1.5 text-white/55 hover:text-white text-[10px] sm:text-xs font-mono uppercase tracking-widest transition-colors max-w-[60vw] truncate"
+            title={current.source_title ?? current.source_url}
+          >
+            <span className="truncate">
+              source:{" "}
+              {current.source_title ??
+                stripUrlScheme(current.source_url)}
+            </span>
+            <ExternalLink className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
+          </a>
+        ) : null}
+        {total > 1 && (
+          <span className="text-white/30 text-[10px] font-mono uppercase tracking-widest select-none">
+            {zoomed ? "tap image to zoom out" : "tap to zoom · ← → to navigate"}
+          </span>
+        )}
+      </div>
     </div>
   );
+}
+
+function stripUrlScheme(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
 }

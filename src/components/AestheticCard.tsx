@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowUpRight, ZoomIn } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
+import { normalizeGallery } from "@/lib/gallery";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -16,11 +17,10 @@ export function AestheticCard({ aesthetic, side }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const isLeft = side === "left";
-  const gallery = aesthetic.gallery_images ?? [];
-  const allImages = [
-    ...(aesthetic.cover_image_url ? [aesthetic.cover_image_url] : []),
-    ...gallery,
-  ];
+  // `normalizeGallery` returns cover + gallery in one ordered list with
+  // per-image attribution. Falls back to URL-only entries for rows that
+  // haven't been re-enriched yet.
+  const allImages = normalizeGallery(aesthetic);
   const galleryRef = useHorizontalWheel<HTMLDivElement>();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function AestheticCard({ aesthetic, side }: Props) {
       }`
     : aesthetic.decade ?? null;
 
-  const activeUrl = allImages[activeIndex];
+  const activeUrl = allImages[activeIndex]?.url;
 
   return (
     <>
@@ -97,11 +97,11 @@ export function AestheticCard({ aesthetic, side }: Props) {
           className="flex gap-1 p-1 flex-shrink-0 overflow-x-auto touch-pan-x bg-black/30 scrollbar-thin h-10 sm:h-14 md:h-16"
         >
           {allImages.length > 1 ? (
-            allImages.map((url, i) => {
+            allImages.map((img, i) => {
               const isActive = i === activeIndex;
               return (
                 <button
-                  key={i}
+                  key={`${img.url}-${i}`}
                   type="button"
                   onClick={() => setActiveIndex(i)}
                   aria-label={`Show image ${i + 1}`}
@@ -113,7 +113,7 @@ export function AestheticCard({ aesthetic, side }: Props) {
                   }`}
                 >
                   <Image
-                    src={url}
+                    src={img.url}
                     alt=""
                     fill
                     className="object-cover"

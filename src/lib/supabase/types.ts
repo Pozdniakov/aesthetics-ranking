@@ -22,6 +22,11 @@ export interface Database {
           created_at: string;
           description: string | null;
           gallery_images: string[];
+          // Rich gallery with per-image attribution. Typed as Json so the
+          // consumer side normalises it via `normalizeGallery` and tolerates
+          // both legacy (string array) and new ({url, source_url, ...})
+          // shapes during the migration window.
+          gallery: Json;
           arena_slug: string | null;
         };
         Insert: {
@@ -36,6 +41,7 @@ export interface Database {
           created_at?: string;
           description?: string | null;
           gallery_images?: string[];
+          gallery?: Json;
           arena_slug?: string | null;
         };
         Update: {
@@ -50,6 +56,7 @@ export interface Database {
           created_at?: string;
           description?: string | null;
           gallery_images?: string[];
+          gallery?: Json;
           arena_slug?: string | null;
         };
       };

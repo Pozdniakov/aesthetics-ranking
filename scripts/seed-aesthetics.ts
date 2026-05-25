@@ -60,8 +60,16 @@ interface ArenaImageVariants {
   original?: { url: string };
 }
 
+interface ArenaSource {
+  url?: string;
+  title?: string;
+  provider?: { name?: string };
+}
+
 interface ArenaBlock {
   class: string;
+  title?: string;
+  source?: ArenaSource | null;
   image?: ArenaImageVariants;
   attachment?: { url: string; content_type: string };
   embed?: { html: string };
@@ -70,6 +78,15 @@ interface ArenaBlock {
 interface ArenaChannel {
   metadata?: { description?: string };
   contents?: ArenaBlock[];
+}
+
+// Shape of each enriched gallery item we store in the `gallery` jsonb
+// column. Aligned with the `GalleryItem` type used on the client side
+// (src/lib/gallery.ts).
+interface GalleryItem {
+  url: string;
+  source_url: string | null;
+  source_title: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,7 +184,10 @@ async function fetchCariPageDetails(
 
 // ── Are.na channel fetch → description + gallery (with retries) ──────────────
 
-type ArenaResult = { description: string; images: string[] };
+type ArenaResult = {
+  description: string;
+  images: GalleryItem[];
+};
 
 // How many image blocks to keep per aesthetic. The /compare card and the
 // /aesthetic detail view both render the strip horizontally, so the gallery
@@ -202,7 +222,7 @@ async function fetchArenaPage(
 
 async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> {
   let description = "";
-  const images: string[] = [];
+  const images: GalleryItem[] = [];
 
   for (let page = 1; page <= ARENA_MAX_PAGES; page++) {
     const data = await fetchArenaPage(channelSlug, page);
@@ -213,13 +233,25 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
     }
 
     // Prefer `large` (1800px) over `display` (1200px) for crisp covers + zoom.
-    const pageImages = (data.contents ?? [])
+    // We also capture the Are.na block's `source.url` / `source.title` so
+    // the UI can credit the original creator next to every image (per
+    // CARI's usage guidelines).
+    const pageImages: GalleryItem[] = (data.contents ?? [])
       .filter(
         (c) =>
           c.class === "Image" &&
           (c.image?.large?.url || c.image?.display?.url)
       )
-      .map((c) => c.image!.large?.url ?? c.image!.display!.url);
+      .map<GalleryItem>((c) => {
+        const url = c.image!.large?.url ?? c.image!.display!.url;
+        const source = c.source ?? null;
+        return {
+          url,
+          source_url: source?.url ?? null,
+          source_title:
+            source?.title?.trim() || source?.provider?.name?.trim() || null,
+        };
+      });
 
     images.push(...pageImages);
 
@@ -272,14 +304,24 @@ async function main() {
     console.log(`  Upserted ${count} rows`);
     slugs = cariList.map((a) => a.urlSlug);
   } else {
-    const { data } = await supabase.from("aesthetics").select("slug, gallery_images");
+    const { data } = await supabase
+      .from("aesthetics")
+      .select("slug, gallery_images, gallery");
     let allRows = data ?? [];
     if (MISSING_ONLY) {
       allRows = allRows.filter((r) => {
-        const imgs = (r.gallery_images as string[] | null) ?? [];
-        if (imgs.length === 0) return true;
-        // Treat CARI-thumbnail URLs as "needs re-fetch"; real gallery is on Are.na's CDN.
-        return imgs.some((u) => /cari-prod\.s3/i.test(u));
+        const legacyImgs = (r.gallery_images as string[] | null) ?? [];
+        const richImgs = Array.isArray(r.gallery)
+          ? (r.gallery as unknown[])
+          : [];
+        // Empty altogether — needs initial enrichment.
+        if (legacyImgs.length === 0 && richImgs.length === 0) return true;
+        // Still on CARI thumbnails — needs to swap to Are.na images.
+        if (legacyImgs.some((u) => /cari-prod\.s3/i.test(u))) return true;
+        // Has legacy URLs but no rich gallery yet — re-fetch to attach
+        // per-image attribution (source_url / source_title).
+        if (legacyImgs.length > 0 && richImgs.length === 0) return true;
+        return false;
       });
     }
     slugs = allRows.map((r) => r.slug as string);
@@ -316,12 +358,22 @@ async function main() {
     // and are NOT artificially capped here — the strip in the UI scrolls.
     const [coverFromArena, ...galleryFromArena] = arenaData.images;
 
+    // Two columns are populated in lockstep:
+    //   - `gallery_images` (legacy text[]): URL-only list, kept for
+    //     backward compatibility while older app builds are still in the
+    //     wild.
+    //   - `gallery` (jsonb): rich list incl. per-image source_url and
+    //     source_title so the UI can credit the original creator.
+    const galleryUrls = galleryFromArena.map((g) => g.url);
+    const galleryRich = arenaData.images; // includes cover at index 0
+
     const { error } = await supabase
       .from("aesthetics")
       .update({
         description: description || null,
-        cover_image_url: coverFromArena,
-        gallery_images: galleryFromArena,
+        cover_image_url: coverFromArena.url,
+        gallery_images: galleryUrls,
+        gallery: galleryRich,
         arena_slug: arenaSlug,
       })
       .eq("slug", slug);
@@ -330,8 +382,9 @@ async function main() {
       console.log(`  [${i + 1}/${slugs.length}] ${slug} — DB error: ${error.message}`);
       failed++;
     } else {
+      const credited = galleryRich.filter((g) => g.source_url).length;
       console.log(
-        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery, ${description.length} chars`
+        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery (${credited} credited), ${description.length} chars`
       );
       enriched++;
     }

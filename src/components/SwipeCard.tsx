@@ -12,6 +12,7 @@ import {
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { StageIndicator } from "@/components/StageIndicator";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
+import { normalizeGallery } from "@/lib/gallery";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -33,11 +34,10 @@ export function SwipeCard({
   onDislike,
   onUndo,
 }: Props) {
-  const gallery = (aesthetic.gallery_images as string[] | null) ?? [];
-  const allImages = [
-    ...(aesthetic.cover_image_url ? [aesthetic.cover_image_url] : []),
-    ...gallery,
-  ];
+  // Single ordered list (cover + gallery) with optional per-image
+  // attribution. Falls back to URL-only entries for rows that haven't
+  // been re-enriched yet (see src/lib/gallery.ts).
+  const allImages = normalizeGallery(aesthetic);
 
   // Active image is the one shown big at top.
   // Reset to the cover whenever the aesthetic changes.
@@ -85,7 +85,7 @@ export function SwipeCard({
       }`
     : aesthetic.decade;
 
-  const activeUrl = allImages[activeIndex];
+  const activeUrl = allImages[activeIndex]?.url;
 
   return (
     <>
@@ -146,11 +146,11 @@ export function SwipeCard({
                 ref={galleryRef}
                 className="flex gap-1 p-1 overflow-x-auto flex-shrink-0 scrollbar-thin"
               >
-                {allImages.map((url, i) => {
+                {allImages.map((img, i) => {
                   const isActive = i === activeIndex;
                   return (
                     <button
-                      key={i}
+                      key={`${img.url}-${i}`}
                       type="button"
                       onClick={() => setActiveIndex(i)}
                       className={`relative flex-shrink-0 w-14 h-12 sm:w-16 sm:h-14 rounded-md overflow-hidden bg-neutral-800 transition-all ${
@@ -162,7 +162,7 @@ export function SwipeCard({
                       aria-pressed={isActive}
                     >
                       <Image
-                        src={url}
+                        src={img.url}
                         alt=""
                         fill
                         className="object-cover"

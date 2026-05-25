@@ -28,6 +28,15 @@ export const metadata: Metadata = {
   title: "Aesthetics Ranking",
   description:
     "Compare visual aesthetics side by side and discover your top 5.",
+  // Allow crawlers to index the pages, but ask them not to surface the
+  // images themselves in Google Images / Bing Images search. This keeps
+  // the site from becoming an inadvertent free-asset gallery for content
+  // we host on behalf of CARI / Are.na creators.
+  robots: {
+    index: true,
+    follow: true,
+    noimageindex: true,
+  },
 };
 
 export default function RootLayout({
@@ -58,7 +67,9 @@ export default function RootLayout({
 
         <footer className="border-t border-white/5 py-4 px-4 text-center">
           <p className="text-white/20 text-xs">
-            Aesthetics sourced from{" "}
+            Non-commercial research project
+            <span className="mx-2 text-white/10">·</span>
+            aesthetics from{" "}
             <a
               href="https://cari.institute/aesthetics"
               target="_blank"
@@ -77,6 +88,13 @@ export default function RootLayout({
             >
               Ivan Pozdniakov
             </a>
+            <span className="mx-2 text-white/10">·</span>
+            <Link
+              href="/about"
+              className="underline hover:text-white/40 transition-colors"
+            >
+              about &amp; attribution
+            </Link>
           </p>
         </footer>
 

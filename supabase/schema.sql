@@ -12,12 +12,18 @@ create table if not exists aesthetics (
   -- Enriched from Are.na
   description text,
   gallery_images text[] not null default '{}',
+  -- New rich form: each entry is {url, source_url, source_title} so we can
+  -- attribute the original creator per CARI's usage guidelines. The legacy
+  -- `gallery_images text[]` column stays around as a fallback for rows that
+  -- haven't been re-enriched yet.
+  gallery jsonb not null default '[]'::jsonb,
   arena_slug text
 );
 
 -- Migration: add enriched columns if aesthetics already exists
 alter table aesthetics add column if not exists description text;
 alter table aesthetics add column if not exists gallery_images text[] not null default '{}';
+alter table aesthetics add column if not exists gallery jsonb not null default '[]'::jsonb;
 alter table aesthetics add column if not exists arena_slug text;
 
 -- Ranking sessions (one per user flow)
