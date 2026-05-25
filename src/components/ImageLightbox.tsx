@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import type { GalleryItem } from "@/lib/gallery";
 
@@ -67,12 +67,34 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
     setZoomed((z) => !z);
   };
 
+  // Touch swipe-to-dismiss: a downward gesture of >80px from anywhere
+  // closes the lightbox. Pinch-zoom on the image itself isn't affected
+  // because the image's onClick toggles its own zoom state and touchAction
+  // there is set to `pinch-zoom`.
+  const touchStartY = useRef<number | null>(null);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) {
+      touchStartY.current = null;
+      return;
+    }
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const endY = e.changedTouches[0]?.clientY ?? touchStartY.current;
+    const delta = endY - touchStartY.current;
+    touchStartY.current = null;
+    if (delta > 80) onClose();
+  };
+
   if (total === 0) return null;
 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md"
       onClick={onClose}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <button
         onClick={(e) => {
@@ -116,10 +138,12 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         </>
       )}
 
-      <div
-        className="relative w-full h-full flex items-center justify-center p-3 sm:p-12 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Image area: the wrapper no longer stops click propagation, so a
+          tap on any of the padding / dark space around the image closes
+          the lightbox. The image itself has its own onClick that
+          toggles zoom and stops propagation, so tapping the image
+          doesn't close. */}
+      <div className="relative w-full h-full flex items-center justify-center p-3 sm:p-12 overflow-hidden pointer-events-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={index}
@@ -127,7 +151,7 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
           alt={alt}
           onClick={handleImageClick}
           draggable={false}
-          className={`max-w-full max-h-full object-contain select-none transition-transform duration-200 ${
+          className={`max-w-full max-h-full object-contain select-none transition-transform duration-200 pointer-events-auto ${
             zoomed ? "scale-[2.5] cursor-zoom-out" : "cursor-zoom-in"
           }`}
           style={{
@@ -161,11 +185,13 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
             <ExternalLink className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
           </a>
         ) : null}
-        {total > 1 && (
-          <span className="text-white/30 text-[10px] font-mono uppercase tracking-widest select-none">
-            {zoomed ? "tap image to zoom out" : "tap to zoom · ← → to navigate"}
-          </span>
-        )}
+        <span className="text-white/30 text-[10px] font-mono uppercase tracking-widest select-none">
+          {zoomed
+            ? "tap image to zoom out"
+            : total > 1
+              ? "tap outside to close · ← → to navigate"
+              : "tap outside to close"}
+        </span>
       </div>
     </div>
   );

@@ -131,15 +131,22 @@ export function AestheticCard({ aesthetic, side }: Props) {
         {/* Info — description scrolls inside its own region; the More
             info link is hidden on mobile. */}
         <div className="flex flex-col gap-1 sm:gap-1.5 p-2.5 sm:p-4 md:p-5 text-left flex-1 min-h-0">
-          <div className="flex items-baseline justify-between gap-2">
+          {/* Title + years stack vertically on narrow viewports.
+              The previous side-by-side layout used `flex-shrink-0 whitespace-nowrap`
+              on the years span, which on mobile crushed the title to ~0px
+              width and made `break-words` render each letter on its own
+              line (the "Themed Spaces" bug). Stacking removes any
+              competition for horizontal space, so the heading can wrap
+              normally at word boundaries. */}
+          <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
             <h2
-              className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight min-w-0 break-words"
+              className="font-display text-white font-semibold text-sm sm:text-lg md:text-xl leading-[1.1] tracking-tight"
               style={{ fontVariationSettings: '"opsz" 96, "SOFT" 60' }}
             >
               {aesthetic.name}
             </h2>
             {years && (
-              <span className="flex-shrink-0 text-white/35 text-[9px] sm:text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
+              <span className="mt-1 sm:mt-0 sm:flex-shrink-0 text-white/35 text-[9px] sm:text-[10px] font-mono tabular-nums uppercase tracking-wider whitespace-nowrap">
                 {years}
               </span>
             )}

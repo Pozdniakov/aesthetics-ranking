@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, RotateCw, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { SwipeCard } from "@/components/SwipeCard";
 import { AestheticCard } from "@/components/AestheticCard";
 import { StageIndicator } from "@/components/StageIndicator";
@@ -176,16 +176,11 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
         </div>
       </div>
 
-      {/* Combined prompt row: rotate hint on the left (only when the
-          viewport is small and portrait), the prompt absolutely centred
-          so its position is unaffected by its neighbours, and `Can't
-          decide` on the right. Replaces the previous standalone bottom
-          row, which freed ~36px of vertical space for the descriptions. */}
+      {/* Prompt row. The prompt is absolutely centred so it stays put
+          regardless of the skip button's width. The previous
+          "Rotate phone" hint was removed because users were trying to
+          click it as if it were a button. */}
       <div className="relative flex items-center flex-shrink-0">
-        <p className="hidden max-sm:portrait:inline-flex items-center gap-1 text-white/35 text-[10px] flex-shrink-0">
-          <RotateCw className="w-3 h-3" strokeWidth={1.75} />
-          <span>Rotate phone</span>
-        </p>
         <p className="absolute inset-x-0 text-white/40 text-xs text-center tracking-[0.2em] uppercase pointer-events-none">
           Which do you prefer?
         </p>

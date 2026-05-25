@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   Heart,
   ThumbsDown,
   Undo2,
@@ -114,32 +116,77 @@ export function SwipeCard({
         <div className="flex-1 min-h-0 w-full rounded-2xl overflow-hidden border border-white/10 bg-neutral-900 flex flex-col md:flex-row">
           {/* Visual side */}
           <div className="flex flex-col flex-shrink-0 md:w-1/2 lg:w-3/5 min-h-0">
-            <button
-              type="button"
-              onClick={() => activeUrl && setLightboxIndex(activeIndex)}
-              className="relative w-full bg-neutral-800 group cursor-zoom-in flex-shrink-0 md:flex-1 md:min-h-0 aspect-[16/10] sm:aspect-[3/2] md:aspect-auto"
-              aria-label="Zoom image"
-            >
-              {activeUrl ? (
-                <Image
-                  key={activeUrl}
-                  src={activeUrl}
-                  alt={aesthetic.name}
-                  fill
-                  className="object-cover animate-in fade-in duration-200"
-                  sizes="(max-width: 768px) 100vw, 60vw"
-                  unoptimized
-                  priority
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-neutral-600 text-sm">
-                  No image
-                </div>
+            {/* Wrap the cover button and the gallery prev/next arrows in
+                a positioned container — the arrows are siblings, not
+                nested children of the button, so we don't violate the
+                "no nested <button>" rule. */}
+            <div className="relative w-full flex-shrink-0 md:flex-1 md:min-h-0 aspect-[16/10] sm:aspect-[3/2] md:aspect-auto">
+              <button
+                type="button"
+                onClick={() => activeUrl && setLightboxIndex(activeIndex)}
+                className="absolute inset-0 w-full h-full bg-neutral-800 group cursor-zoom-in"
+                aria-label="Zoom image"
+              >
+                {activeUrl ? (
+                  <Image
+                    key={activeUrl}
+                    src={activeUrl}
+                    alt={aesthetic.name}
+                    fill
+                    className="object-cover animate-in fade-in duration-200"
+                    sizes="(max-width: 768px) 100vw, 60vw"
+                    unoptimized
+                    priority
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-neutral-600 text-sm">
+                    No image
+                  </div>
+                )}
+                <span className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/80 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <ZoomIn className="w-4 h-4" strokeWidth={1.75} />
+                </span>
+              </button>
+
+              {/* Prev / next arrows are overlaid on top of the cover
+                  button. They sit at z-10, above the image but below the
+                  lightbox. e.stopPropagation prevents the underlying
+                  zoom-button from firing when the user just wants to
+                  flip the gallery. */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIndex(
+                        (i) => (i - 1 + allImages.length) % allImages.length
+                      );
+                    }}
+                    aria-label="Previous image"
+                    className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/85 hover:bg-black/70 hover:text-white transition-colors flex items-center justify-center"
+                  >
+                    <ChevronLeft className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIndex((i) => (i + 1) % allImages.length);
+                    }}
+                    aria-label="Next image"
+                    className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/85 hover:bg-black/70 hover:text-white transition-colors flex items-center justify-center"
+                  >
+                    <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
+                  {/* Index counter — small, in the top-right, so the user
+                      sees they're on N of M. */}
+                  <span className="absolute top-2 right-2 z-10 inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/85 text-[10px] font-mono tabular-nums">
+                    {activeIndex + 1} / {allImages.length}
+                  </span>
+                </>
               )}
-              <span className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/80 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                <ZoomIn className="w-4 h-4" strokeWidth={1.75} />
-              </span>
-            </button>
+            </div>
 
             {allImages.length > 1 && (
               <div

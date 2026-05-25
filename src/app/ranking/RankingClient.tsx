@@ -110,21 +110,27 @@ export function RankingClient() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto w-full px-4 py-8">
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-white text-2xl font-bold">My Top 5 Aesthetics</h1>
+      {/* Title row stacks vertically on narrow viewports — the long
+          "Erase ranking & compare again" pill was previously
+          `flex-shrink-0`, squashing the heading to ~100px and causing
+          the page-title overflow Кеша reported. */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-white text-2xl font-bold leading-tight">
+            My Top 5 Aesthetics
+          </h1>
           <p className="text-white/40 text-sm mt-1">
             {session.totalComparisons} comparisons
           </p>
         </div>
         {hasData ? (
-          <EraseRankingButton className="flex-shrink-0 px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 text-sm transition-colors">
-            Erase ranking & compare again
+          <EraseRankingButton className="self-start px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 text-sm transition-colors whitespace-nowrap">
+            Erase &amp; compare again
           </EraseRankingButton>
         ) : (
           <Link
             href="/compare"
-            className="flex-shrink-0 px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 text-sm transition-colors"
+            className="self-start px-4 py-2 rounded-xl border border-white/20 text-white/60 hover:text-white hover:border-white/40 text-sm transition-colors whitespace-nowrap"
           >
             Compare
           </Link>
