@@ -4,12 +4,14 @@ import { createClient } from "@/lib/supabase/client";
 
 const SESSION_KEY = "aesthetics_session_id";
 const DISPLAY_NAME_KEY = "aesthetics_display_name";
+const SHARE_URL_KEY = "aesthetics_share_url_v1";
 
 export function clearSession(): void {
   if (typeof window === "undefined") return;
   const keys = [
     SESSION_KEY,
     DISPLAY_NAME_KEY,
+    SHARE_URL_KEY,
     "aesthetics_likes_v2",
     "aesthetics_swipe_index_v2",
     "aesthetics_insertion_state_v1",
@@ -17,6 +19,20 @@ export function clearSession(): void {
     "aesthetics_shuffle_seed_v1",
   ];
   keys.forEach((k) => localStorage.removeItem(k));
+}
+
+export function getStoredShareUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(SHARE_URL_KEY);
+}
+
+export function setStoredShareUrl(url: string | null): void {
+  if (typeof window === "undefined") return;
+  if (url) {
+    localStorage.setItem(SHARE_URL_KEY, url);
+  } else {
+    localStorage.removeItem(SHARE_URL_KEY);
+  }
 }
 
 export function getStoredSessionId(): string | null {

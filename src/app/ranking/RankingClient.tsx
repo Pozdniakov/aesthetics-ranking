@@ -2,14 +2,19 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
+import { Check, Copy, Share2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useNicheScore } from "@/hooks/useNicheScore";
 import { createClient } from "@/lib/supabase/client";
-import { getStoredDisplayName } from "@/lib/session";
+import {
+  getStoredDisplayName,
+  getStoredShareUrl,
+  setStoredShareUrl,
+} from "@/lib/session";
 import { EraseRankingButton } from "@/components/EraseRankingButton";
 import type { RatedAesthetic } from "@/hooks/useSession";
 
@@ -46,7 +51,12 @@ export function RankingClient() {
   );
 
   const [sharing, setSharing] = useState(false);
+  // Initialize shareUrl from localStorage on mount so the URL survives
+  // reloads and the user doesn't see "Generating…" each time they revisit
+  // their ranking. The first render is `null` to keep server/client
+  // identical; the useEffect below hydrates from storage.
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copyOk, setCopyOk] = useState(false);
   const supabase = createClient();
 
   // Hooks must run unconditionally — call useNicheScore here even if data is
@@ -58,38 +68,83 @@ export function RankingClient() {
     hasFullTop
   );
 
-  const handleShare = async () => {
-    if (!session.sessionId) return;
+  /**
+   * Generates (or regenerates) the share URL: writes a new slug to
+   * ranking_sessions and persists it to localStorage. Returns the URL or
+   * null on failure. `silent` skips user-facing toasts when called as part
+   * of the auto-generate flow on mount.
+   */
+  const generateShareUrl = useCallback(
+    async (silent: boolean): Promise<string | null> => {
+      if (!session.sessionId) return null;
+      try {
+        const slug = nanoid(8);
+        const displayName = getStoredDisplayName();
+        // Persist the *exact* algorithm-ranked top so the share page renders
+        // what the user actually saw, not a wins-based reconstruction (which
+        // would diverge whenever the user used undo or whenever the Guarded
+        // Insertion order disagrees with raw win counts).
+        const topKIds = session.confirmedTop;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any)
+          .from("ranking_sessions")
+          .update({
+            share_slug: slug,
+            is_public: true,
+            display_name: displayName,
+            top_k_ids: topKIds,
+          })
+          .eq("id", session.sessionId);
+        if (error) throw error;
+        const url = `${window.location.origin}/share/${slug}`;
+        setShareUrl(url);
+        setStoredShareUrl(url);
+        return url;
+      } catch {
+        if (!silent) toast.error("Failed to generate link");
+        return null;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [session.sessionId, session.confirmedTop.join(",")]
+  );
+
+  const handleShareClick = async () => {
     setSharing(true);
-    try {
-      const slug = nanoid(8);
-      const displayName = getStoredDisplayName();
-      // Persist the *exact* algorithm-ranked top so the share page renders
-      // what the user actually saw, not a wins-based reconstruction (which
-      // would diverge whenever the user used undo or whenever the Guarded
-      // Insertion order disagrees with raw win counts).
-      const topKIds = session.confirmedTop;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("ranking_sessions")
-        .update({
-          share_slug: slug,
-          is_public: true,
-          display_name: displayName,
-          top_k_ids: topKIds,
-        })
-        .eq("id", session.sessionId);
-      if (error) throw error;
-      const url = `${window.location.origin}/share/${slug}`;
-      setShareUrl(url);
-      const copied = await copyTextToClipboard(url);
-      toast.success(copied ? "Link copied!" : "Link ready — tap Copy");
-    } catch {
-      toast.error("Failed to generate link");
-    } finally {
-      setSharing(false);
-    }
+    const url = shareUrl ?? (await generateShareUrl(false));
+    setSharing(false);
+    if (!url) return;
+    const copied = await copyTextToClipboard(url);
+    setCopyOk(copied);
+    toast[copied ? "success" : "error"](
+      copied ? "Link copied!" : "Copy failed — long-press the link"
+    );
+    if (copied) setTimeout(() => setCopyOk(false), 2000);
   };
+
+  // Auto-generate the share URL once the user has a complete top-5 and a
+  // session id. This eliminates the "Share →" extra click that was easy
+  // to miss and made testers send the bare /ranking URL (which renders
+  // empty for any other viewer because the data lives in localStorage).
+  const autoSharedRef = useRef(false);
+  useEffect(() => {
+    // Hydrate from localStorage first so reloads pick up the prior link.
+    const stored = getStoredShareUrl();
+    if (stored && !shareUrl) {
+      setShareUrl(stored);
+      autoSharedRef.current = true;
+      return;
+    }
+    if (
+      !autoSharedRef.current &&
+      !shareUrl &&
+      hasFullTop &&
+      session.sessionId
+    ) {
+      autoSharedRef.current = true;
+      void generateShareUrl(true);
+    }
+  }, [shareUrl, hasFullTop, session.sessionId, generateShareUrl]);
 
   if (session.loading) {
     return (
@@ -160,6 +215,78 @@ export function RankingClient() {
             </ol>
           </section>
 
+          {/* Share — moved above the Taste profile block so it stays
+              visible without scrolling on mobile. Testers were copying
+              the address-bar /ranking URL because the share block was
+              below the fold; promoting it here is the cheapest fix. */}
+          {hasFullTop && (
+            <section
+              className="rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent p-5 sm:p-6"
+              aria-label="Share your ranking"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <Share2 className="w-4 h-4 text-amber-300" aria-hidden />
+                <h2 className="text-amber-200 text-sm font-semibold uppercase tracking-widest">
+                  Share your ranking
+                </h2>
+              </div>
+
+              {shareUrl ? (
+                <>
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch">
+                    <input
+                      readOnly
+                      value={shareUrl}
+                      onClick={(e) => e.currentTarget.select()}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="flex-1 min-w-0 px-3 py-3 rounded-xl bg-black/40 border border-white/15 text-white text-sm font-mono truncate focus:outline-none focus:border-white/40"
+                      aria-label="Share URL"
+                    />
+                    <button
+                      onClick={handleShareClick}
+                      disabled={sharing}
+                      className={`flex-shrink-0 px-5 py-3 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
+                        copyOk
+                          ? "bg-emerald-400 text-black"
+                          : "bg-white text-black hover:bg-white/90 disabled:opacity-50"
+                      }`}
+                    >
+                      {copyOk ? (
+                        <>
+                          <Check className="w-4 h-4" aria-hidden /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" aria-hidden /> Copy link
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-3 text-white/45 text-xs leading-snug">
+                    <span className="text-white/60">Tip:</span> send the link
+                    above — not the URL in your address bar. The
+                    <span className="font-mono text-white/60"> /ranking </span>
+                    page only shows results to you.
+                  </p>
+                </>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                  <p className="text-white/60 text-sm flex-1">
+                    Generate a public link to your top 5.
+                  </p>
+                  <button
+                    onClick={handleShareClick}
+                    disabled={sharing}
+                    className="flex-shrink-0 px-5 py-3 rounded-xl bg-white text-black font-semibold text-sm hover:bg-white/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Share2 className="w-4 h-4" aria-hidden />
+                    {sharing ? "Generating…" : "Create share link"}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Taste profile — full breakdown with scale */}
           {hasFullTop && !niche.loading && niche.label && (() => {
             const deviation = niche.score - 50;
@@ -228,37 +355,6 @@ export function RankingClient() {
               </section>
             );
           })()}
-
-          {/* Share */}
-          <section className="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            {shareUrl ? (
-              <>
-                <p className="text-white/60 text-sm flex-1 break-all">{shareUrl}</p>
-                <button
-                  onClick={async () => {
-                    const copied = await copyTextToClipboard(shareUrl);
-                    toast[copied ? "success" : "error"](
-                      copied ? "Copied!" : "Copy failed"
-                    );
-                  }}
-                  className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
-                >
-                  Copy again
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-white/60 text-sm flex-1">Share your top 5 with others</p>
-                <button
-                  onClick={handleShare}
-                  disabled={sharing}
-                  className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-black font-semibold text-sm hover:bg-white/90 disabled:opacity-50 transition-colors"
-                >
-                  {sharing ? "Generating…" : "Share →"}
-                </button>
-              </>
-            )}
-          </section>
 
           {/* Rest of liked items */}
           {rest.length > 0 && (
