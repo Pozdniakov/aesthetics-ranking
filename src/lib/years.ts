@@ -57,3 +57,46 @@ export function decadeSortKey(decade: string): number {
   if (!match) return Number.POSITIVE_INFINITY;
   return parseInt(match[0], 10);
 }
+
+/** Floor the first 4-digit year found in `s` to its decade (e.g. 1987 → 1980). */
+function parseDecadeYear(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(19|20)\d{2}/);
+  if (!m) return null;
+  return Math.floor(parseInt(m[0], 10) / 10) * 10;
+}
+
+/**
+ * Every decade an aesthetic's lifespan touches.
+ *
+ * Unlike `decadeOf`, which buckets by the start decade only, this walks
+ * the inclusive range [start decade … end decade] and emits every step.
+ * That makes the global decade filter behave the way users intuitively
+ * expect: items that span multiple decades (e.g. "Mid 1950s" → "Mid
+ * 1970s") appear under each of them, and aesthetics still active today
+ * (`end_year === "Current"`) show up under the current decade even when
+ * CARI didn't backfill anything tagged "2020s".
+ *
+ * Falls back to `decadeOf` for rows where one of the endpoints can't be
+ * parsed (CARI sometimes only labels a `decade` peak without a numeric
+ * start/end).
+ */
+export function decadesOf(
+  a: Pick<Aesthetic, "start_year" | "end_year" | "decade">
+): string[] {
+  const startDecade = parseDecadeYear(a.start_year);
+  const endDecade =
+    a.end_year === "Current"
+      ? Math.floor(new Date().getFullYear() / 10) * 10
+      : parseDecadeYear(a.end_year);
+
+  if (startDecade !== null && endDecade !== null && startDecade <= endDecade) {
+    const out: string[] = [];
+    for (let y = startDecade; y <= endDecade; y += 10) {
+      out.push(`${y}s`);
+    }
+    return out;
+  }
+  const single = decadeOf(a);
+  return single ? [single] : [];
+}

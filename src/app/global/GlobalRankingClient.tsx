@@ -6,7 +6,7 @@ import Image from "next/image";
 import { ArrowUpRight, Network } from "lucide-react";
 import { Crown } from "@/components/Crown";
 import { createClient } from "@/lib/supabase/client";
-import { decadeOf, decadeSortKey, formatYears } from "@/lib/years";
+import { decadeSortKey, decadesOf, formatYears } from "@/lib/years";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface AggRow extends Aesthetic {
@@ -96,23 +96,30 @@ export function GlobalRankingClient() {
 
   const visible = ranked.filter((r) => r.appearances > 0);
   const dormant = ranked.filter((r) => r.appearances === 0);
-  // Use coarse decade buckets ("1980s") rather than the free-form
-  // `start_year` ("Early 1980s") so the filter stays small and sortable.
+  // Bucket each aesthetic into every decade it spans, so the filter
+  // surfaces e.g. an "end_year=Current" entry under the current decade
+  // even when CARI labels its start in the 2010s. Items spanning
+  // multiple decades intentionally appear in each bucket.
+  const decadesByAesthetic = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const r of visible) map.set(r.id, decadesOf(r));
+    return map;
+  }, [visible]);
   const decades = useMemo(
     () =>
       Array.from(
         new Set(
-          visible
-            .map((r) => decadeOf(r))
-            .filter((value): value is string => Boolean(value))
+          Array.from(decadesByAesthetic.values()).flat()
         )
       ).sort((a, b) => decadeSortKey(a) - decadeSortKey(b)),
-    [visible]
+    [decadesByAesthetic]
   );
   const filteredVisible =
     selectedDecade === ALL_DECADES
       ? visible
-      : visible.filter((r) => decadeOf(r) === selectedDecade);
+      : visible.filter((r) =>
+          (decadesByAesthetic.get(r.id) ?? []).includes(selectedDecade)
+        );
 
   if (loading) {
     return (
