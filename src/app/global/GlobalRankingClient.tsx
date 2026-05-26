@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { Crown } from "@/components/Crown";
 import { createClient } from "@/lib/supabase/client";
+import { formatYears } from "@/lib/years";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface AggRow extends Aesthetic {
@@ -286,7 +287,7 @@ export function GlobalRankingClient() {
                   {row.name}
                 </p>
                 <p className="text-white/30 text-xs font-mono mt-0.5">
-                  {row.decade ?? "—"}
+                  {formatYears(row) ?? "—"}
                 </p>
               </div>
               {/* Win rate bar */}

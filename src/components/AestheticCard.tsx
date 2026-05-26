@@ -6,6 +6,7 @@ import { ArrowUpRight, ZoomIn } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
 import { getSourceLabel, normalizeGallery } from "@/lib/gallery";
+import { formatYears } from "@/lib/years";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -27,15 +28,7 @@ export function AestheticCard({ aesthetic, side }: Props) {
     setActiveIndex(0);
   }, [aesthetic.id]);
 
-  const years = aesthetic.start_year
-    ? `${aesthetic.start_year}${
-        aesthetic.end_year
-          ? aesthetic.end_year === "Current"
-            ? " – now"
-            : ` – ${aesthetic.end_year}`
-          : ""
-      }`
-    : aesthetic.decade ?? null;
+  const years = formatYears(aesthetic);
 
   const activeUrl = allImages[activeIndex]?.url;
   const activeImage = allImages[activeIndex];

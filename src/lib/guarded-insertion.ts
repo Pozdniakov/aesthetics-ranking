@@ -12,9 +12,9 @@
  *       If it wins → binary-search its position in sorted[0..K-2] (1–3 more).
  *
  * Expected comparisons for ordered top-5:
- *   N=10 → ~18–25   (vs theoretical min 15, old ELO cap 40)
- *   N=15 → ~22–30   (vs theoretical min 19, old cap 60)
- *   N=20 → ~25–35   (vs theoretical min 21, old cap 80)
+ *   N=10 → ~18–25   (vs theoretical min 15, full insertion sort ~24)
+ *   N=15 → ~22–30   (vs theoretical min 19, full insertion sort ~37)
+ *   N=20 → ~25–35   (vs theoretical min 21, full insertion sort ~50)
  *
  * State is plain JSON — safe to store in localStorage and restore.
  *

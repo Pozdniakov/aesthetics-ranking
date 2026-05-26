@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { formatYears } from "@/lib/years";
 import type { RatedAesthetic } from "@/hooks/useSession";
 
 interface Props {
@@ -54,14 +55,17 @@ export function RankingList({ items, showPosition = true }: Props) {
                   {item.name}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-0.5">
-                  {item.decade && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs bg-white/10 text-white/50 border-0 py-0"
-                    >
-                      {item.decade}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const years = formatYears(item);
+                    return years ? (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-white/10 text-white/50 border-0 py-0"
+                      >
+                        {years}
+                      </Badge>
+                    ) : null;
+                  })()}
                 </div>
               </div>
 

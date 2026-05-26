@@ -15,6 +15,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { StageIndicator } from "@/components/StageIndicator";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
 import { getSourceLabel, normalizeGallery } from "@/lib/gallery";
+import { formatYears } from "@/lib/years";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -77,15 +78,7 @@ export function SwipeCard({
     return () => document.removeEventListener("keydown", onKey);
   }, [allImages.length]);
 
-  const years = aesthetic.start_year
-    ? `${aesthetic.start_year}${
-        aesthetic.end_year
-          ? aesthetic.end_year === "Current"
-            ? " – now"
-            : ` – ${aesthetic.end_year}`
-          : ""
-      }`
-    : aesthetic.decade;
+  const years = formatYears(aesthetic);
 
   const activeUrl = allImages[activeIndex]?.url;
   const activeImage = allImages[activeIndex];

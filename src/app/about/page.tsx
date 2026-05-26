@@ -38,7 +38,8 @@ export default function AboutPage() {
         Where the content comes from
       </h2>
       <p className="mt-3 text-white/65 text-base leading-relaxed">
-        Every aesthetic, description, and image shown here is sourced from the{" "}
+        Every aesthetic, description, image, and video shown here is sourced
+        from the{" "}
         <a
           href="https://cari.institute/aesthetics"
           target="_blank"
@@ -116,10 +117,75 @@ export default function AboutPage() {
         Phase one is a quick like/skip pass through all 90 aesthetics. Phase
         two takes only the ones you liked and feeds them into a Guarded Top-K
         Insertion Sort &mdash; a small algorithm that finds your top 5 in
-        roughly 18 to 30 comparisons (vs. ~45 for a naive ELO setup). The
-        algorithm runs entirely in your browser; only your final ranking and
-        the individual pairwise outcomes are saved (anonymously) to power the
+        roughly 18 to 30 comparisons, instead of the ~40 a full insertion
+        sort would need to fully order, say, 15 liked items. The algorithm
+        runs entirely in your browser; only your final ranking and the
+        individual pairwise outcomes are saved (anonymously) to power the
         global board and the &ldquo;mainstream vs niche&rdquo; taste score.
+      </p>
+
+      <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">
+        How the taste profile is calculated
+      </h2>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        The 0&ndash;100 &ldquo;mainstream &harr; niche&rdquo; score on your
+        ranking page is a rank-based percentile, not a rating. It answers a
+        single question: <em>among everyone else&rsquo;s pairwise choices,
+        where do your top 5 sit in the popularity distribution?</em>
+      </p>
+      <ol className="mt-3 text-white/65 text-base leading-relaxed list-decimal list-inside space-y-1.5 marker:text-white/30">
+        <li>
+          Take every comparison anyone has ever made on the site, excluding
+          your own current session, and count how many times each aesthetic
+          has been chosen as the winner. Call that number{" "}
+          <span className="font-mono text-white/85">wins(a)</span> for
+          aesthetic <span className="font-mono text-white/85">a</span>.
+        </li>
+        <li>
+          Sort all aesthetics that have ever won at least one comparison by{" "}
+          <span className="font-mono text-white/85">wins</span> in descending
+          order. The most popular aesthetic gets rank 0, the next gets rank
+          1, and so on up to <span className="font-mono text-white/85">N&minus;1</span>.
+        </li>
+        <li>
+          For each aesthetic in your top 5, compute its percentile{" "}
+          <span className="font-mono text-white/85">p = rank / (N&minus;1)</span>.
+          Items the rest of the world has never picked are treated as{" "}
+          <span className="font-mono text-white/85">p = 1</span> (maximally
+          niche).
+        </li>
+        <li>
+          Your score is the average percentile across all five items,
+          multiplied by 100 and rounded.
+        </li>
+      </ol>
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-mono text-white/75 text-sm leading-relaxed">
+        <p>score = round( mean<sub>i</sub>( p<sub>i</sub> ) &times; 100 )</p>
+        <p className="mt-1">
+          p<sub>i</sub> = rank<sub>i</sub> / (N &minus; 1)
+        </p>
+        <p className="mt-1 text-white/45 text-xs">
+          rank<sub>i</sub> &mdash; 0-based position of your i-th favourite in
+          the global popularity ranking; N &mdash; number of aesthetics that
+          have ever won at least one comparison.
+        </p>
+      </div>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        Bucketing is purely cosmetic: 0&ndash;19 = Very mainstream,
+        20&ndash;39 = Mainstream, 40&ndash;59 = Mixed taste,
+        60&ndash;79 = Niche, 80&ndash;100 = Very niche. A score near 50
+        means your favourites sit, on average, right in the middle of the
+        global popularity distribution &mdash; not that you are
+        &ldquo;average&rdquo;, just that the centre of mass of your top 5
+        lines up with the centre of everyone else&rsquo;s choices.
+      </p>
+      <p className="mt-3 text-white/45 text-sm leading-relaxed">
+        Caveat: because the score is calculated from raw win counts across
+        every comparison, the most-liked aesthetics on the front of the
+        catalogue tend to accumulate wins simply by being shown more often
+        in phase two. The score is best read as &ldquo;how I compare with
+        other rankers on this site&rdquo;, not as an objective measure of
+        cultural mainstream-ness.
       </p>
 
       <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">
@@ -127,8 +193,8 @@ export default function AboutPage() {
       </h2>
       <p className="mt-3 text-white/65 text-base leading-relaxed">
         This project is built to need as little personal data as possible.
-        There is no sign-up, no email collection, and no third-party tracking
-        or advertising scripts. The site uses your browser&rsquo;s{" "}
+        There is no sign-up, no email collection, and no advertising scripts.
+        The site uses your browser&rsquo;s{" "}
         <span className="font-mono text-white/80">localStorage</span> to
         remember your progress across pages; that storage is functional and is
         not used for marketing, so under the EU ePrivacy Directive no cookie
@@ -200,7 +266,9 @@ export default function AboutPage() {
         site itself is served by Vercel (which retains short-lived access
         logs); the application database is Supabase (EU region). Neither is
         used for analytics or profiling beyond what is necessary to keep the
-        site online.
+        site online. Video tiles on aesthetic detail pages are click-to-load:
+        no YouTube or Vimeo iframe is loaded until you press play, at which
+        point playback is governed by that provider&rsquo;s privacy policy.
       </p>
 
       <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">

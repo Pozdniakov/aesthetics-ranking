@@ -17,6 +17,10 @@ create table if not exists aesthetics (
   -- `gallery_images text[]` column stays around as a fallback for rows that
   -- haven't been re-enriched yet.
   gallery jsonb not null default '[]'::jsonb,
+  -- Rich video blocks from the same Are.na channels. Stored separately from
+  -- images so ranking/compare screens can stay image-only while the detail
+  -- page can offer click-to-load video embeds.
+  videos jsonb not null default '[]'::jsonb,
   arena_slug text
 );
 
@@ -24,6 +28,7 @@ create table if not exists aesthetics (
 alter table aesthetics add column if not exists description text;
 alter table aesthetics add column if not exists gallery_images text[] not null default '{}';
 alter table aesthetics add column if not exists gallery jsonb not null default '[]'::jsonb;
+alter table aesthetics add column if not exists videos jsonb not null default '[]'::jsonb;
 alter table aesthetics add column if not exists arena_slug text;
 
 -- Ranking sessions (one per user flow)
@@ -48,16 +53,15 @@ alter table ranking_sessions add column if not exists display_name text;
 -- and (b) ignores undone comparisons that still live in the DB.
 alter table ranking_sessions add column if not exists top_k_ids uuid[];
 
--- ELO ratings per session per aesthetic
-create table if not exists elo_ratings (
-  session_id uuid not null references ranking_sessions(id) on delete cascade,
-  aesthetic_id uuid not null references aesthetics(id) on delete cascade,
-  rating integer not null default 1000,
-  wins integer not null default 0,
-  losses integer not null default 0,
-  updated_at timestamptz not null default now(),
-  primary key (session_id, aesthetic_id)
-);
+-- Migration: drop the legacy ELO ratings table. The runtime no longer uses
+-- ELO at all (replaced by the Guarded Top-K Insertion algorithm in
+-- src/lib/guarded-insertion.ts); the table sat unused in the schema. The
+-- DROP must come BEFORE the create-trigger / enable-rls blocks below
+-- reference the table, so put it here right after the migrations for the
+-- ranking_sessions table.
+drop trigger if exists elo_ratings_updated_at on elo_ratings;
+drop index if exists idx_elo_ratings_session;
+drop table if exists elo_ratings;
 
 -- Comparison log
 create table if not exists comparisons (
@@ -69,7 +73,6 @@ create table if not exists comparisons (
 );
 
 -- Indexes
-create index if not exists idx_elo_ratings_session on elo_ratings(session_id);
 create index if not exists idx_comparisons_session on comparisons(session_id);
 create index if not exists idx_ranking_sessions_share_slug on ranking_sessions(share_slug);
 create index if not exists idx_ranking_sessions_user_id on ranking_sessions(user_id);
@@ -88,15 +91,9 @@ create trigger ranking_sessions_updated_at
   before update on ranking_sessions
   for each row execute function update_updated_at();
 
-drop trigger if exists elo_ratings_updated_at on elo_ratings;
-create trigger elo_ratings_updated_at
-  before update on elo_ratings
-  for each row execute function update_updated_at();
-
 -- RLS
 alter table aesthetics enable row level security;
 alter table ranking_sessions enable row level security;
-alter table elo_ratings enable row level security;
 alter table comparisons enable row level security;
 
 -- Aesthetics: anyone can read

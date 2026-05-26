@@ -27,6 +27,8 @@ export interface Database {
           // both legacy (string array) and new ({url, source_url, ...})
           // shapes during the migration window.
           gallery: Json;
+          // Rich Are.na video blocks for the aesthetic detail page.
+          videos: Json;
           arena_slug: string | null;
         };
         Insert: {
@@ -42,6 +44,7 @@ export interface Database {
           description?: string | null;
           gallery_images?: string[];
           gallery?: Json;
+          videos?: Json;
           arena_slug?: string | null;
         };
         Update: {
@@ -57,6 +60,7 @@ export interface Database {
           description?: string | null;
           gallery_images?: string[];
           gallery?: Json;
+          videos?: Json;
           arena_slug?: string | null;
         };
       };
@@ -92,32 +96,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      elo_ratings: {
-        Row: {
-          session_id: string;
-          aesthetic_id: string;
-          rating: number;
-          wins: number;
-          losses: number;
-          updated_at: string;
-        };
-        Insert: {
-          session_id: string;
-          aesthetic_id: string;
-          rating?: number;
-          wins?: number;
-          losses?: number;
-          updated_at?: string;
-        };
-        Update: {
-          session_id?: string;
-          aesthetic_id?: string;
-          rating?: number;
-          wins?: number;
-          losses?: number;
-          updated_at?: string;
-        };
-      };
       comparisons: {
         Row: {
           id: string;
@@ -145,5 +123,4 @@ export interface Database {
 export type Aesthetic = Database["public"]["Tables"]["aesthetics"]["Row"];
 export type RankingSession =
   Database["public"]["Tables"]["ranking_sessions"]["Row"];
-export type EloRating = Database["public"]["Tables"]["elo_ratings"]["Row"];
 export type Comparison = Database["public"]["Tables"]["comparisons"]["Row"];

@@ -16,6 +16,7 @@ import {
   setStoredShareUrl,
 } from "@/lib/session";
 import { EraseRankingButton } from "@/components/EraseRankingButton";
+import { formatYears } from "@/lib/years";
 import type { RatedAesthetic } from "@/hooks/useSession";
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -403,7 +404,12 @@ function TopItem({ item, pos }: { item: RatedAesthetic; pos: number }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white font-medium text-sm truncate">{item.name}</p>
-          {item.decade && <p className="text-white/30 text-xs">{item.decade}</p>}
+          {(() => {
+            const years = formatYears(item);
+            return years ? (
+              <p className="text-white/30 text-xs">{years}</p>
+            ) : null;
+          })()}
         </div>
         <div className="flex-shrink-0">
           <span className="text-white/20 font-mono text-xs">#{pos}</span>

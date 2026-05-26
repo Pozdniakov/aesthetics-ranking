@@ -66,6 +66,15 @@ interface ArenaSource {
   provider?: { name?: string };
 }
 
+interface ArenaEmbed {
+  html?: string;
+  url?: string;
+  title?: string;
+  provider_name?: string;
+  provider_url?: string;
+  thumbnail_url?: string;
+}
+
 interface ArenaBlock {
   class: string;
   title?: string | null;
@@ -73,7 +82,7 @@ interface ArenaBlock {
   source?: ArenaSource | null;
   image?: ArenaImageVariants;
   attachment?: { url: string; content_type: string };
-  embed?: { html: string };
+  embed?: ArenaEmbed | null;
 }
 
 interface ArenaChannel {
@@ -94,6 +103,17 @@ interface GalleryItem {
   source_url: string | null;
   /** block.source.title || block.source.provider.name. */
   source_title: string | null;
+}
+
+interface VideoItem {
+  title: string | null;
+  description: string | null;
+  embed_url: string | null;
+  file_url: string | null;
+  thumbnail_url: string | null;
+  source_url: string | null;
+  source_title: string | null;
+  provider: string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -122,6 +142,83 @@ function htmlToText(value: string): string {
       .replace(/\n{3,}/g, "\n\n")
       .trim()
   );
+}
+
+function extractIframeSrc(html: string | undefined): string | null {
+  if (!html) return null;
+  const match = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+  return match?.[1]?.replace(/&amp;/g, "&") ?? null;
+}
+
+function normalizeEmbedUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "");
+
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = url.searchParams.get("v");
+      if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
+      if (url.pathname.startsWith("/embed/")) {
+        return `https://www.youtube-nocookie.com${url.pathname}`;
+      }
+    }
+
+    if (host === "youtu.be") {
+      const id = url.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
+    }
+
+    if (host === "youtube-nocookie.com" && url.pathname.startsWith("/embed/")) {
+      return `https://www.youtube-nocookie.com${url.pathname}`;
+    }
+
+    if (host === "vimeo.com") {
+      const id = url.pathname.split("/").filter(Boolean).pop();
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+
+    if (host === "player.vimeo.com" && url.pathname.startsWith("/video/")) {
+      return url.toString();
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function providerFromUrl(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, "");
+    if (host.includes("youtube")) return "YouTube";
+    if (host.includes("youtu.be")) return "YouTube";
+    if (host.includes("vimeo")) return "Vimeo";
+    return host;
+  } catch {
+    return null;
+  }
+}
+
+function bestImageUrl(image: ArenaImageVariants | undefined): string | null {
+  return (
+    image?.large?.url ??
+    image?.display?.url ??
+    image?.thumb?.url ??
+    image?.square?.url ??
+    null
+  );
+}
+
+function dedupeVideos(videos: VideoItem[]): VideoItem[] {
+  const seen = new Set<string>();
+  return videos.filter((video) => {
+    const key = video.embed_url ?? video.file_url;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Run tasks with limited concurrency. */
@@ -194,12 +291,14 @@ async function fetchCariPageDetails(
 type ArenaResult = {
   description: string;
   images: GalleryItem[];
+  videos: VideoItem[];
 };
 
 // How many image blocks to keep per aesthetic. The /compare card and the
 // /aesthetic detail view both render the strip horizontally, so the gallery
 // can comfortably take 20+ thumbs without harming layout.
 const MAX_IMAGES_PER_AESTHETIC = 24;
+const MAX_VIDEOS_PER_AESTHETIC = 12;
 const ARENA_PER_PAGE = 50;
 const ARENA_MAX_PAGES = 3;
 
@@ -230,10 +329,11 @@ async function fetchArenaPage(
 async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> {
   let description = "";
   const images: GalleryItem[] = [];
+  const videos: VideoItem[] = [];
 
   for (let page = 1; page <= ARENA_MAX_PAGES; page++) {
     const data = await fetchArenaPage(channelSlug, page);
-    if (!data) return page === 1 ? null : { description, images };
+    if (!data) return page === 1 ? null : { description, images, videos };
 
     if (page === 1) {
       description = (data.metadata?.description ?? "").trim();
@@ -275,9 +375,54 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
 
     images.push(...pageImages);
 
+    const pageVideos: VideoItem[] = (data.contents ?? [])
+      .filter(
+        (c) =>
+          c.class === "Media" ||
+          (c.class === "Attachment" &&
+            (c.attachment?.content_type ?? "").startsWith("video/"))
+      )
+      .map<VideoItem | null>((c) => {
+        const source = c.source ?? null;
+        const rawEmbed =
+          extractIframeSrc(c.embed?.html) ?? c.embed?.url ?? source?.url ?? null;
+        const embedUrl =
+          c.class === "Media" ? normalizeEmbedUrl(rawEmbed) : null;
+        const fileUrl =
+          c.class === "Attachment" && c.attachment?.content_type.startsWith("video/")
+            ? c.attachment.url
+            : null;
+        if (!embedUrl && !fileUrl) return null;
+        const thumbnailUrl =
+          c.embed?.thumbnail_url ?? bestImageUrl(c.image) ?? null;
+        const provider =
+          c.embed?.provider_name ??
+          providerFromUrl(embedUrl ?? source?.url ?? fileUrl);
+        return {
+          title: c.title?.trim() || c.embed?.title?.trim() || null,
+          description: c.description?.trim() || null,
+          embed_url: embedUrl,
+          file_url: fileUrl,
+          thumbnail_url: thumbnailUrl,
+          source_url: source?.url ?? rawEmbed ?? fileUrl,
+          source_title:
+            source?.title?.trim() ||
+            source?.provider?.name?.trim() ||
+            c.embed?.title?.trim() ||
+            null,
+          provider,
+        };
+      })
+      .filter((v): v is VideoItem => v !== null);
+
+    videos.push(...pageVideos);
+
+    if ((data.contents?.length ?? 0) < ARENA_PER_PAGE) {
+      break;
+    }
     if (
-      images.length >= MAX_IMAGES_PER_AESTHETIC ||
-      (data.contents?.length ?? 0) < ARENA_PER_PAGE
+      images.length >= MAX_IMAGES_PER_AESTHETIC &&
+      videos.length >= MAX_VIDEOS_PER_AESTHETIC
     ) {
       break;
     }
@@ -285,7 +430,11 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
     await delay(400);
   }
 
-  return { description, images: images.slice(0, MAX_IMAGES_PER_AESTHETIC) };
+  return {
+    description,
+    images: images.slice(0, MAX_IMAGES_PER_AESTHETIC),
+    videos: dedupeVideos(videos).slice(0, MAX_VIDEOS_PER_AESTHETIC),
+  };
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -326,7 +475,7 @@ async function main() {
   } else {
     const { data } = await supabase
       .from("aesthetics")
-      .select("slug, gallery_images, gallery");
+      .select("slug, gallery_images, gallery, videos");
     let allRows = data ?? [];
     if (MISSING_ONLY) {
       allRows = allRows.filter((r) => {
@@ -341,6 +490,10 @@ async function main() {
         // Has legacy URLs but no rich gallery yet — re-fetch to attach
         // per-image attribution (source_url / source_title).
         if (legacyImgs.length > 0 && richImgs.length === 0) return true;
+        // Image data is fresh but the new videos column is still empty.
+        if (!Array.isArray(r.videos) || (r.videos as unknown[]).length === 0) {
+          return true;
+        }
         return false;
       });
     }
@@ -378,12 +531,13 @@ async function main() {
     // and are NOT artificially capped here — the strip in the UI scrolls.
     const [coverFromArena, ...galleryFromArena] = arenaData.images;
 
-    // Two columns are populated in lockstep:
+    // Three columns are populated in lockstep:
     //   - `gallery_images` (legacy text[]): URL-only list, kept for
     //     backward compatibility while older app builds are still in the
     //     wild.
     //   - `gallery` (jsonb): rich list incl. per-image source_url and
     //     source_title so the UI can credit the original creator.
+    //   - `videos` (jsonb): click-to-load video embeds for detail pages.
     const galleryUrls = galleryFromArena.map((g) => g.url);
     const galleryRich = arenaData.images; // includes cover at index 0
 
@@ -394,6 +548,7 @@ async function main() {
         cover_image_url: coverFromArena.url,
         gallery_images: galleryUrls,
         gallery: galleryRich,
+        videos: arenaData.videos,
         arena_slug: arenaSlug,
       })
       .eq("slug", slug);
@@ -410,7 +565,7 @@ async function main() {
         (g) => g.title || g.description || g.source_url
       ).length;
       console.log(
-        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery (${credited}/${galleryRich.length} credited), ${description.length} chars`
+        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery (${credited}/${galleryRich.length} credited), ${arenaData.videos.length} videos, ${description.length} chars`
       );
       enriched++;
     }

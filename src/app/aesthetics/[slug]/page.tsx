@@ -4,25 +4,15 @@ import { notFound } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeGallery } from "@/lib/gallery";
+import { normalizeVideos } from "@/lib/videos";
+import { formatYears } from "@/lib/years";
 import { AestheticGallerySection } from "./AestheticGallerySection";
 import { AestheticPageBackLink } from "./AestheticPageBackLink";
+import { AestheticVideosSection } from "./AestheticVideosSection";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-function yearsFor(aesthetic: Aesthetic) {
-  if (aesthetic.start_year) {
-    return `${aesthetic.start_year}${
-      aesthetic.end_year
-        ? aesthetic.end_year === "Current"
-          ? " - now"
-          : ` - ${aesthetic.end_year}`
-        : ""
-    }`;
-  }
-  return aesthetic.decade;
 }
 
 async function getAesthetic(slug: string) {
@@ -63,8 +53,9 @@ export default async function AestheticPage({ params }: Props) {
 
   if (!aesthetic) notFound();
 
-  const years = yearsFor(aesthetic);
+  const years = formatYears(aesthetic);
   const gallery = normalizeGallery(aesthetic);
+  const videos = normalizeVideos(aesthetic);
   const arenaChannelUrl = aesthetic.arena_slug
     ? `https://www.are.na/cari/${aesthetic.arena_slug}`
     : null;
@@ -150,6 +141,7 @@ export default async function AestheticPage({ params }: Props) {
         cariSlug={aesthetic.slug}
         arenaChannelUrl={arenaChannelUrl}
       />
+      <AestheticVideosSection videos={videos} />
     </div>
   );
 }
