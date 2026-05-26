@@ -25,3 +25,35 @@ export function formatYears(
   }
   return a.decade ?? null;
 }
+
+/**
+ * Extracts a coarse decade label (e.g. "1980s") for an aesthetic.
+ *
+ * `start_year` is the most specific field but it is a free-form string from
+ * CARI ("Early 1960s", "Mid 1980s", "Late 1990s", etc.); sorting it
+ * lexicographically interleaves Early/Mid/Late and looks broken in the UI.
+ * Mapping everything down to its parent decade gives a small, monotonically
+ * sortable filter set: 1950s, 1960s, ..., 2010s, plus "Timeless" for rows
+ * that explicitly bucket themselves outside any decade.
+ */
+export function decadeOf(
+  a: Pick<Aesthetic, "start_year" | "decade">
+): string | null {
+  const fromStart = a.start_year?.match(/(19|20)\d{2}s?/i)?.[0];
+  if (fromStart) {
+    return fromStart.endsWith("s") ? fromStart : `${fromStart}s`;
+  }
+  if (a.decade && a.decade.trim()) return a.decade.trim();
+  return null;
+}
+
+/**
+ * Numeric sort key for a decade label. Numeric decades parse to their first
+ * year ("1980s" -> 1980). Non-numeric buckets like "Timeless" sort to the
+ * end of the list.
+ */
+export function decadeSortKey(decade: string): number {
+  const match = decade.match(/(19|20)\d{2}/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return parseInt(match[0], 10);
+}

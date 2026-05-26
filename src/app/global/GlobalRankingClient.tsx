@@ -6,7 +6,7 @@ import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { Crown } from "@/components/Crown";
 import { createClient } from "@/lib/supabase/client";
-import { formatYears } from "@/lib/years";
+import { decadeOf, decadeSortKey, formatYears } from "@/lib/years";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface AggRow extends Aesthetic {
@@ -96,21 +96,23 @@ export function GlobalRankingClient() {
 
   const visible = ranked.filter((r) => r.appearances > 0);
   const dormant = ranked.filter((r) => r.appearances === 0);
+  // Use coarse decade buckets ("1980s") rather than the free-form
+  // `start_year` ("Early 1980s") so the filter stays small and sortable.
   const decades = useMemo(
     () =>
       Array.from(
         new Set(
-          ranked
-            .map((r) => r.start_year ?? r.decade)
+          visible
+            .map((r) => decadeOf(r))
             .filter((value): value is string => Boolean(value))
         )
-      ).sort(),
-    [ranked]
+      ).sort((a, b) => decadeSortKey(a) - decadeSortKey(b)),
+    [visible]
   );
   const filteredVisible =
     selectedDecade === ALL_DECADES
       ? visible
-      : visible.filter((r) => (r.start_year ?? r.decade) === selectedDecade);
+      : visible.filter((r) => decadeOf(r) === selectedDecade);
 
   if (loading) {
     return (
