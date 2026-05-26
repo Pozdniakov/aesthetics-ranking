@@ -18,8 +18,10 @@ import {
   DEFAULT_THRESHOLD,
   METRIC_RANGE,
   buildAffinity,
+  buildAffinityInputs,
   getMetric,
   type AffinityEdge,
+  type AffinityInput,
   type AffinityMetric,
 } from "@/lib/affinity";
 import { decadeOf } from "@/lib/years";
@@ -72,7 +74,7 @@ const RADIUS = 300;
 
 export function AffinityGraphClient() {
   const [aesthetics, setAesthetics] = useState<Aesthetic[]>([]);
-  const [topKLists, setTopKLists] = useState<string[][]>([]);
+  const [affinityInputs, setAffinityInputs] = useState<AffinityInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,36 +103,55 @@ export function AffinityGraphClient() {
 
     async function load() {
       try {
-        const [{ data: ae, error: aeErr }, sessions] = await Promise.all([
-          supabase.from("aesthetics").select("*"),
-          (async () => {
-            // Page through sessions in case there's eventually a lot.
-            const out: string[][] = [];
-            let from = 0;
-            while (true) {
-              const { data, error } = await supabase
-                .from("ranking_sessions")
-                .select("top_k_ids")
-                .not("top_k_ids", "is", null)
-                .range(from, from + PAGE_SIZE - 1);
-              if (error) throw error;
-              if (!data || data.length === 0) break;
-              for (const r of data) {
-                if (r.top_k_ids && r.top_k_ids.length >= 2) {
-                  out.push(r.top_k_ids);
+        const [{ data: ae, error: aeErr }, sessions, comparisons] =
+          await Promise.all([
+            supabase.from("aesthetics").select("*"),
+            (async () => {
+              // Page through sessions in case there's eventually a lot.
+              const out: { id: string; top_k_ids: string[] | null }[] = [];
+              let from = 0;
+              while (true) {
+                const { data, error } = await supabase
+                  .from("ranking_sessions")
+                  .select("id, top_k_ids")
+                  .range(from, from + PAGE_SIZE - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                for (const r of data) {
+                  out.push({ id: r.id, top_k_ids: r.top_k_ids });
                 }
+                if (data.length < PAGE_SIZE) break;
+                from += PAGE_SIZE;
               }
-              if (data.length < PAGE_SIZE) break;
-              from += PAGE_SIZE;
-            }
-            return out;
-          })(),
-        ]);
+              return out;
+            })(),
+            (async () => {
+              const out: {
+                session_id: string;
+                winner_id: string;
+                loser_id: string;
+              }[] = [];
+              let from = 0;
+              while (true) {
+                const { data, error } = await supabase
+                  .from("comparisons")
+                  .select("session_id, winner_id, loser_id")
+                  .range(from, from + PAGE_SIZE - 1);
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                out.push(...data);
+                if (data.length < PAGE_SIZE) break;
+                from += PAGE_SIZE;
+              }
+              return out;
+            })(),
+          ]);
         if (aeErr) throw aeErr;
+        const inputs = buildAffinityInputs(sessions, comparisons);
         if (cancelled) return;
         queueMicrotask(() => {
           setAesthetics((ae ?? []) as Aesthetic[]);
-          setTopKLists(sessions);
+          setAffinityInputs(inputs);
           setLoading(false);
         });
       } catch (e) {
@@ -150,8 +171,8 @@ export function AffinityGraphClient() {
 
   // ─── Affinity calculation ────────────────────────────────────────────
   const affinity = useMemo(
-    () => buildAffinity(topKLists.map((ids) => ({ top_k_ids: ids }))),
-    [topKLists]
+    () => buildAffinity(affinityInputs),
+    [affinityInputs]
   );
 
   // Lookup table once per aesthetics fetch.
@@ -418,11 +439,17 @@ export function AffinityGraphClient() {
           </h1>
           <p className="text-white/40 text-sm mt-2 max-w-xl">
             Two aesthetics connect when they appear together in someone&rsquo;s
-            top 5. Thicker lines = more shared taste.{" "}
+            top 5. Unfinished sessions with enough comparison data get a
+            proxy top 5.{" "}
             <span className="font-mono tabular-nums text-white/70">
               {affinity.totalSessions}
             </span>{" "}
-            session{affinity.totalSessions === 1 ? "" : "s"} ·{" "}
+            session{affinity.totalSessions === 1 ? "" : "s"}{" "}
+            <span className="text-white/30">
+              ({affinity.confirmedSessions} final + {affinity.derivedSessions}{" "}
+              derived)
+            </span>{" "}
+            ·{" "}
             <span className="font-mono tabular-nums text-white/70">
               {filteredEdges.length}
             </span>{" "}
@@ -514,6 +541,9 @@ export function AffinityGraphClient() {
             <span className="text-white/80">Lift</span> compares their actual
             co-occurrence against what you&rsquo;d expect by chance — values
             above 1 mean &ldquo;more often together than random&rdquo;.
+            Confirmed sessions use the saved top 5; derived sessions infer a
+            proxy top 5 from comparison win-rates when the user did enough
+            pairwise choices but did not finish the flow.
           </p>
           {legendDecades.length > 0 && (
             <div>
@@ -758,7 +788,7 @@ export function AffinityGraphClient() {
               <ul className="text-white/40 text-xs leading-relaxed flex flex-col gap-1.5 mt-1">
                 <li>
                   <span className="text-white/70">Node size</span> — how often
-                  the aesthetic appears in someone&rsquo;s top 5.
+                  the aesthetic appears in a final or derived top 5.
                 </li>
                 <li>
                   <span className="text-white/70">Node colour</span> — its

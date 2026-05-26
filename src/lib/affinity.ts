@@ -17,8 +17,22 @@
  * A small floor (`minCooc`) is applied to drop noise from one-off sessions.
  */
 
+export type AffinitySource = "confirmed" | "derived";
+
 export interface AffinityInput {
   top_k_ids: string[] | null;
+  source?: AffinitySource;
+}
+
+export interface AffinitySessionInput {
+  id: string;
+  top_k_ids: string[] | null;
+}
+
+export interface AffinityComparisonInput {
+  session_id: string;
+  winner_id: string;
+  loser_id: string;
 }
 
 export interface AffinityEdge {
@@ -42,6 +56,17 @@ export interface AffinityResult {
    * Surfacing it lets the UI explain why a pair was filtered out.
    */
   minCoocApplied: number;
+  /** Sessions with a persisted top-5. */
+  confirmedSessions: number;
+  /** Sessions whose top-5 was inferred from raw comparisons. */
+  derivedSessions: number;
+}
+
+export interface BuildAffinityInputsOptions {
+  /** Number of ranked ids to infer from an unfinished session. */
+  topK?: number;
+  /** Require this many unique winners before deriving a proxy top-K. */
+  minUniqueWinners?: number;
 }
 
 export interface BuildAffinityOptions {
@@ -52,6 +77,67 @@ export interface BuildAffinityOptions {
    * doesn't have to be retuned by hand as more rankings come in.
    */
   minCooc?: number;
+}
+
+export function buildAffinityInputs(
+  sessions: AffinitySessionInput[],
+  comparisons: AffinityComparisonInput[],
+  options: BuildAffinityInputsOptions = {}
+): AffinityInput[] {
+  const topK = options.topK ?? 5;
+  const minUniqueWinners = options.minUniqueWinners ?? 5;
+  const bySession = new Map<
+    string,
+    { wins: Map<string, number>; losses: Map<string, number> }
+  >();
+
+  for (const c of comparisons) {
+    let stats = bySession.get(c.session_id);
+    if (!stats) {
+      stats = { wins: new Map(), losses: new Map() };
+      bySession.set(c.session_id, stats);
+    }
+    stats.wins.set(c.winner_id, (stats.wins.get(c.winner_id) ?? 0) + 1);
+    stats.losses.set(c.loser_id, (stats.losses.get(c.loser_id) ?? 0) + 1);
+  }
+
+  const inputs: AffinityInput[] = [];
+  for (const s of sessions) {
+    if (s.top_k_ids && s.top_k_ids.length >= 2) {
+      inputs.push({ top_k_ids: s.top_k_ids, source: "confirmed" });
+      continue;
+    }
+
+    const stats = bySession.get(s.id);
+    if (!stats || stats.wins.size < minUniqueWinners) continue;
+
+    const derived = Array.from(stats.wins.keys())
+      .map((id) => {
+        const wins = stats.wins.get(id) ?? 0;
+        const losses = stats.losses.get(id) ?? 0;
+        const appearances = wins + losses;
+        return {
+          id,
+          wins,
+          appearances,
+          winRate: (wins + 1) / (appearances + 2),
+        };
+      })
+      .sort((a, b) => {
+        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.appearances !== a.appearances) return b.appearances - a.appearances;
+        return a.id.localeCompare(b.id);
+      })
+      .slice(0, topK)
+      .map((row) => row.id);
+
+    if (derived.length >= 2) {
+      inputs.push({ top_k_ids: derived, source: "derived" });
+    }
+  }
+
+  return inputs;
 }
 
 /**
@@ -83,6 +169,8 @@ export function buildAffinity(
   const counts = new Map<string, number>();
   const coocMap = new Map<string, number>();
   let totalSessions = 0;
+  let confirmedSessions = 0;
+  let derivedSessions = 0;
 
   for (const s of sessions) {
     if (!s.top_k_ids || s.top_k_ids.length < 2) continue;
@@ -92,6 +180,8 @@ export function buildAffinity(
     const ids = Array.from(new Set(s.top_k_ids));
     if (ids.length < 2) continue;
     totalSessions += 1;
+    if (s.source === "derived") derivedSessions += 1;
+    else confirmedSessions += 1;
 
     for (const id of ids) {
       counts.set(id, (counts.get(id) ?? 0) + 1);
@@ -127,7 +217,14 @@ export function buildAffinity(
     edges.push({ a, b, cooc: c, jaccard, lift });
   }
 
-  return { counts, edges, totalSessions, minCoocApplied };
+  return {
+    counts,
+    edges,
+    totalSessions,
+    minCoocApplied,
+    confirmedSessions,
+    derivedSessions,
+  };
 }
 
 export type AffinityMetric = "jaccard" | "lift";
