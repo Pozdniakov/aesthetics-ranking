@@ -430,7 +430,13 @@ export function AffinityGraphClient() {
             <span className="font-mono tabular-nums text-white/50">
               {affinity.edges.length}
             </span>{" "}
-            ties shown
+            ties shown · noise floor{" "}
+            <span
+              className="font-mono tabular-nums text-white/50"
+              title="A pair must co-occur in at least this many sessions before any metric is computed. Scales with sample size."
+            >
+              ≥{affinity.minCoocApplied}
+            </span>
           </p>
         </div>
         <button
@@ -764,8 +770,12 @@ export function AffinityGraphClient() {
                 </li>
               </ul>
               <p className="text-white/30 text-[11px] mt-auto leading-relaxed">
-                Only ties with at least 2 shared sessions are shown to filter
-                out one-off coincidences.
+                Only ties with at least{" "}
+                <span className="font-mono">{affinity.minCoocApplied}</span>{" "}
+                shared session
+                {affinity.minCoocApplied === 1 ? "" : "s"} are shown — this
+                floor rises automatically as more rankings come in, so the
+                graph stays meaningful at any scale.
               </p>
             </>
           )}

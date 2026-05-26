@@ -36,22 +36,50 @@ export interface AffinityResult {
   edges: AffinityEdge[];
   /** Sessions actually used (with valid `top_k_ids` of length >= 2). */
   totalSessions: number;
+  /**
+   * The actual minimum co-occurrence floor that was applied. Either taken
+   * from `options.minCooc` or derived adaptively from `totalSessions`.
+   * Surfacing it lets the UI explain why a pair was filtered out.
+   */
+  minCoocApplied: number;
 }
 
 export interface BuildAffinityOptions {
   /**
-   * Minimum number of co-occurrences for an edge to make it into the
-   * result. Defaults to 2 — single-session pairs are almost always
-   * uninteresting (one user happened to pick this combo).
+   * Override the minimum number of co-occurrences for an edge to pass
+   * the noise floor. Leave undefined to use `adaptiveMinCooc`, which
+   * scales with the number of contributing sessions so the threshold
+   * doesn't have to be retuned by hand as more rankings come in.
    */
   minCooc?: number;
+}
+
+/**
+ * Noise floor that grows with the dataset.
+ *
+ * Why a single literal (e.g. `>= 2`) doesn't work:
+ *  - With 13 sessions, requiring 2 shared appearances keeps real signal
+ *    while dropping single-coincidence pairs. Good.
+ *  - With 1000 sessions, *every* pair of remotely popular aesthetics
+ *    will have >= 2 shared appearances purely by chance, and the graph
+ *    becomes a fully connected mush.
+ *
+ * Jaccard and Lift are already scale-invariant (they're ratios), so the
+ * slider thresholds for those don't need to move. But the raw cooc floor
+ * absolutely does. ceil(N / 25) keeps the floor at 2 up to ~50 sessions
+ * (where 2 still feels conservative), then grows roughly linearly. The
+ * divisor was chosen so that with ~5 picks per session and ~90
+ * aesthetics, the expected count for a uniformly-random pair stays well
+ * below the floor at any N.
+ */
+export function adaptiveMinCooc(totalSessions: number): number {
+  return Math.max(2, Math.ceil(totalSessions / 25));
 }
 
 export function buildAffinity(
   sessions: AffinityInput[],
   options: BuildAffinityOptions = {}
 ): AffinityResult {
-  const minCooc = options.minCooc ?? 2;
   const counts = new Map<string, number>();
   const coocMap = new Map<string, number>();
   let totalSessions = 0;
@@ -78,9 +106,13 @@ export function buildAffinity(
     }
   }
 
+  // Pick the floor after we know N. Adaptive default; explicit override
+  // wins so callers / tests can pin a value.
+  const minCoocApplied = options.minCooc ?? adaptiveMinCooc(totalSessions);
+
   const edges: AffinityEdge[] = [];
   for (const [key, c] of coocMap) {
-    if (c < minCooc) continue;
+    if (c < minCoocApplied) continue;
     const sep = key.indexOf("|");
     const a = key.slice(0, sep);
     const b = key.slice(sep + 1);
@@ -95,7 +127,7 @@ export function buildAffinity(
     edges.push({ a, b, cooc: c, jaccard, lift });
   }
 
-  return { counts, edges, totalSessions };
+  return { counts, edges, totalSessions, minCoocApplied };
 }
 
 export type AffinityMetric = "jaccard" | "lift";
