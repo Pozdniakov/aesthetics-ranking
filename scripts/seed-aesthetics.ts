@@ -150,6 +150,35 @@ function extractIframeSrc(html: string | undefined): string | null {
   return match?.[1]?.replace(/&amp;/g, "&") ?? null;
 }
 
+function unwrapEmbedlyProxy(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (!url.hostname.endsWith("embedly.com")) return value;
+    const inner = url.searchParams.get("src");
+    return inner ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isSupportedVideoHost(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, "");
+    return (
+      host === "youtube.com" ||
+      host === "m.youtube.com" ||
+      host === "youtu.be" ||
+      host === "youtube-nocookie.com" ||
+      host === "vimeo.com" ||
+      host === "player.vimeo.com"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function normalizeEmbedUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
@@ -182,10 +211,28 @@ function normalizeEmbedUrl(value: string | null | undefined): string | null {
       return url.toString();
     }
 
-    return url.toString();
+    return null;
   } catch {
     return null;
   }
+}
+
+function pickVideoEmbedUrl(
+  block: ArenaBlock
+): { embedUrl: string | null; provider: string | null } {
+  const candidates: (string | null | undefined)[] = [
+    block.source?.url,
+    unwrapEmbedlyProxy(extractIframeSrc(block.embed?.html)),
+    extractIframeSrc(block.embed?.html),
+    block.embed?.url,
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    if (!isSupportedVideoHost(c)) continue;
+    const normalized = normalizeEmbedUrl(c);
+    if (normalized) return { embedUrl: normalized, provider: providerFromUrl(normalized) };
+  }
+  return { embedUrl: null, provider: null };
 }
 
 function providerFromUrl(value: string | null): string | null {
@@ -384,10 +431,8 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
       )
       .map<VideoItem | null>((c) => {
         const source = c.source ?? null;
-        const rawEmbed =
-          extractIframeSrc(c.embed?.html) ?? c.embed?.url ?? source?.url ?? null;
-        const embedUrl =
-          c.class === "Media" ? normalizeEmbedUrl(rawEmbed) : null;
+        const { embedUrl, provider: pickedProvider } =
+          c.class === "Media" ? pickVideoEmbedUrl(c) : { embedUrl: null, provider: null };
         const fileUrl =
           c.class === "Attachment" && c.attachment?.content_type.startsWith("video/")
             ? c.attachment.url
@@ -396,15 +441,16 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
         const thumbnailUrl =
           c.embed?.thumbnail_url ?? bestImageUrl(c.image) ?? null;
         const provider =
+          pickedProvider ??
           c.embed?.provider_name ??
-          providerFromUrl(embedUrl ?? source?.url ?? fileUrl);
+          providerFromUrl(source?.url ?? fileUrl);
         return {
           title: c.title?.trim() || c.embed?.title?.trim() || null,
           description: c.description?.trim() || null,
           embed_url: embedUrl,
           file_url: fileUrl,
           thumbnail_url: thumbnailUrl,
-          source_url: source?.url ?? rawEmbed ?? fileUrl,
+          source_url: source?.url ?? embedUrl ?? fileUrl,
           source_title:
             source?.title?.trim() ||
             source?.provider?.name?.trim() ||
