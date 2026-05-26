@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Network } from "lucide-react";
 import { Crown } from "@/components/Crown";
 import { createClient } from "@/lib/supabase/client";
 import { decadeOf, decadeSortKey, formatYears } from "@/lib/years";
@@ -183,6 +183,31 @@ export function GlobalRankingClient() {
           <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.75} />
         </Link>
       </div>
+
+      {/* Affinity graph CTA — exposed prominently because the graph view is
+          a parallel way of reading the global data and would otherwise be
+          undiscoverable inside the ranking page. */}
+      <Link
+        href="/global/graph"
+        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.04] to-white/[0.01] px-4 py-3 hover:border-white/20 hover:from-white/[0.07] transition-colors"
+      >
+        <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/80 group-hover:text-white transition-colors">
+          <Network className="w-5 h-5" strokeWidth={1.5} />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-white text-sm font-semibold">
+            Affinity graph
+          </span>
+          <span className="block text-white/45 text-xs mt-0.5">
+            Which aesthetics share a taste? Explore the graph built from every
+            shared top 5.
+          </span>
+        </span>
+        <ArrowUpRight
+          className="flex-shrink-0 w-4 h-4 text-white/40 group-hover:text-white transition-colors"
+          strokeWidth={1.75}
+        />
+      </Link>
 
       {decades.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-thin">
