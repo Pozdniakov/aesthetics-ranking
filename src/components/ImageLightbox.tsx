@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, X } from "lucide-react";
-import type { GalleryItem } from "@/lib/gallery";
+import { getSourceLabel, parseAttribution, type GalleryItem } from "@/lib/gallery";
 
 interface Props {
   /**
@@ -25,11 +25,27 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
   // the rest of this component can blindly read `current.source_url` etc.
   const items: GalleryItem[] = images.map((img) =>
     typeof img === "string"
-      ? { url: img, source_url: null, source_title: null }
+      ? {
+          url: img,
+          title: null,
+          description: null,
+          source_url: null,
+          source_title: null,
+        }
       : img
   );
   const total = items.length;
   const current = items[index];
+  const sourceLabel = getSourceLabel(current);
+  const attribution = parseAttribution(current);
+  // Fall back to the source title only when the curator-written title
+  // is the same string (avoids "X · X" duplication in the credit row).
+  const sourceLinkText =
+    current.source_title && current.source_title !== current.title
+      ? current.source_title
+      : current.source_url
+        ? stripUrlScheme(current.source_url)
+        : null;
 
   const next = useCallback(() => {
     setZoomed(false);
@@ -113,38 +129,74 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         </span>
       )}
 
-      {/* Always-visible attribution strip pinned to the top. Per CARI
-          guidelines we credit the original source for every image we
-          surface; when the underlying Are.na block has no source link
-          we still tell the viewer that explicitly so they don't assume
-          we authored it. The strip stops click propagation so tapping
-          the link doesn't close the lightbox. */}
+      {/* Always-visible attribution card pinned to the top. Per CARI
+          guidelines we credit the original creator for every image we
+          surface; we now compose the best possible credit from up to
+          four Are.na fields (block.title, block.description parsed for
+          year/author, block.source.url and block.source.title) so the
+          viewer never has to guess. When nothing is known we still say
+          so explicitly, with a pointer back to the CARI archive. */}
       <div
         className="absolute inset-x-0 top-16 sm:top-20 z-10 flex justify-center px-4 pointer-events-none"
         onClick={(e) => e.stopPropagation()}
       >
-        {current.source_url ? (
-          <a
-            href={current.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
+        {sourceLabel ||
+        attribution.author ||
+        attribution.year ||
+        current.source_url ? (
+          <div
+            className="pointer-events-auto max-w-[92vw] sm:max-w-[600px] rounded-2xl bg-black/75 backdrop-blur-md border border-white/15 px-4 py-2.5 text-white/85 text-xs sm:text-sm shadow-lg"
             onClick={(e) => e.stopPropagation()}
-            className="pointer-events-auto inline-flex items-center gap-2 max-w-[90vw] rounded-full bg-black/70 backdrop-blur-md border border-white/15 px-3.5 py-1.5 text-white/85 text-xs sm:text-sm hover:bg-black/85 hover:text-white transition-colors"
-            title={current.source_title ?? current.source_url}
           >
-            <span className="text-white/45 uppercase tracking-widest text-[10px] flex-shrink-0">
-              Source
-            </span>
-            <span className="truncate">
-              {current.source_title ?? stripUrlScheme(current.source_url)}
-            </span>
-            <ExternalLink
-              className="w-3.5 h-3.5 flex-shrink-0 opacity-75"
-              strokeWidth={1.75}
-            />
-          </a>
+            <div className="flex items-center gap-2">
+              <span className="text-white/40 uppercase tracking-widest text-[10px] flex-shrink-0">
+                Source
+              </span>
+              <span className="font-medium truncate">
+                {sourceLabel ?? "unknown"}
+              </span>
+            </div>
+            {(attribution.year ||
+              attribution.author ||
+              current.source_url) && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-white/55 text-[11px] sm:text-xs">
+                {attribution.year && (
+                  <span className="font-mono tabular-nums">
+                    {attribution.year}
+                  </span>
+                )}
+                {attribution.author && (
+                  <>
+                    {attribution.year && <Dot />}
+                    <span className="truncate max-w-full">
+                      by {attribution.author}
+                    </span>
+                  </>
+                )}
+                {current.source_url && sourceLinkText && (
+                  <>
+                    {(attribution.year || attribution.author) && <Dot />}
+                    <a
+                      href={current.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 underline-offset-2 hover:underline hover:text-white text-white/70 transition-colors truncate"
+                      title={current.source_url}
+                    >
+                      <span className="truncate">{sourceLinkText}</span>
+                      <ExternalLink
+                        className="w-3 h-3 flex-shrink-0 opacity-75"
+                        strokeWidth={1.75}
+                      />
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
-          <span className="inline-flex items-center gap-2 max-w-[90vw] rounded-full bg-black/55 backdrop-blur-md border border-white/10 px-3.5 py-1.5 text-white/55 text-xs">
+          <span className="pointer-events-none inline-flex items-center gap-2 max-w-[90vw] rounded-full bg-black/55 backdrop-blur-md border border-white/10 px-3.5 py-1.5 text-white/55 text-xs">
             <span className="text-white/35 uppercase tracking-widest text-[10px] flex-shrink-0">
               Source
             </span>
@@ -222,4 +274,12 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
 
 function stripUrlScheme(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, "");
+}
+
+function Dot() {
+  return (
+    <span className="text-white/25 select-none" aria-hidden>
+      ·
+    </span>
+  );
 }

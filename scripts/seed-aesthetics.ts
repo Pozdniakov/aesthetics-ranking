@@ -68,7 +68,8 @@ interface ArenaSource {
 
 interface ArenaBlock {
   class: string;
-  title?: string;
+  title?: string | null;
+  description?: string | null;
   source?: ArenaSource | null;
   image?: ArenaImageVariants;
   attachment?: { url: string; content_type: string };
@@ -85,7 +86,13 @@ interface ArenaChannel {
 // (src/lib/gallery.ts).
 interface GalleryItem {
   url: string;
+  /** Curator-written Are.na block.title — usually the work name. */
+  title: string | null;
+  /** Curator-written block.description — usually "YEAR\nAUTHOR\n[url]". */
+  description: string | null;
+  /** Are.na block.source.url — the original outbound link, if any. */
   source_url: string | null;
+  /** block.source.title || block.source.provider.name. */
   source_title: string | null;
 }
 
@@ -232,21 +239,34 @@ async function fetchArenaData(channelSlug: string): Promise<ArenaResult | null> 
       description = (data.metadata?.description ?? "").trim();
     }
 
-    // Prefer `large` (1800px) over `display` (1200px) for crisp covers + zoom.
-    // We also capture the Are.na block's `source.url` / `source.title` so
-    // the UI can credit the original creator next to every image (per
-    // CARI's usage guidelines).
+    // Prefer `large` (1800px) over `display` (1200px) for crisp covers +
+    // zoom. We accept both `Image` AND `Link` blocks: most of the rich
+    // metadata on CARI's Are.na channels lives on Link blocks (curator
+    // pastes the source URL and Are.na auto-fetches a preview image).
+    // The previous "Image only" filter dropped ~half the channel and
+    // discarded the best-attributed entries.
+    //
+    // For every block we keep four attribution fields so the UI can
+    // surface the maximum credit per CARI's usage guidelines:
+    //   - block.title       (often the work name + year)
+    //   - block.description (often "YEAR\nAUTHOR\n[URL]")
+    //   - block.source.url  (outbound link to the artist's site)
+    //   - block.source.title / provider.name (domain or page title)
     const pageImages: GalleryItem[] = (data.contents ?? [])
       .filter(
         (c) =>
-          c.class === "Image" &&
+          (c.class === "Image" || c.class === "Link") &&
           (c.image?.large?.url || c.image?.display?.url)
       )
       .map<GalleryItem>((c) => {
         const url = c.image!.large?.url ?? c.image!.display!.url;
         const source = c.source ?? null;
+        const title = c.title?.trim() || null;
+        const description = c.description?.trim() || null;
         return {
           url,
+          title,
+          description,
           source_url: source?.url ?? null,
           source_title:
             source?.title?.trim() || source?.provider?.name?.trim() || null,
@@ -382,9 +402,15 @@ async function main() {
       console.log(`  [${i + 1}/${slugs.length}] ${slug} — DB error: ${error.message}`);
       failed++;
     } else {
-      const credited = galleryRich.filter((g) => g.source_url).length;
+      // "Credited" now counts blocks with ANY attribution metadata
+      // (title, description, or source_url). After accepting Link
+      // blocks and capturing title+description this should be near-100%
+      // for most channels.
+      const credited = galleryRich.filter(
+        (g) => g.title || g.description || g.source_url
+      ).length;
       console.log(
-        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery (${credited} credited), ${description.length} chars`
+        `  [${i + 1}/${slugs.length}] ${slug} — cover + ${galleryFromArena.length} gallery (${credited}/${galleryRich.length} credited), ${description.length} chars`
       );
       enriched++;
     }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import type { GalleryItem } from "@/lib/gallery";
+import { getSourceLabel, type GalleryItem } from "@/lib/gallery";
 
 interface Props {
   gallery: GalleryItem[];
@@ -41,46 +41,47 @@ export function AestheticGallerySection({
         </p>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-        {gallery.map((img, i) => (
-          <button
-            key={`${img.url}-${i}`}
-            type="button"
-            onClick={() => setLightboxIndex(i)}
-            aria-label={
-              img.source_title
-                ? `Enlarge image: ${img.source_title}`
-                : `Enlarge image ${i + 1}`
-            }
-            className="relative aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 group cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors hover:border-white/15"
-          >
-            <Image
-              src={img.url}
-              alt={img.source_title ?? ""}
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 50vw, 280px"
-              unoptimized
-            />
-            {/* Per-image attribution badge. Always visible (no hover gate)
-                so credit travels with the image at first glance, per
-                CARI usage guidelines. Falls back to "source unknown"
-                when the underlying Are.na block had no source link, so
-                viewers don't assume we authored the image. */}
-            <span
-              className={`absolute bottom-1.5 left-1.5 right-1.5 inline-flex items-center gap-1 rounded-full backdrop-blur-sm px-2 py-1 text-[10px] pointer-events-none ${
-                img.source_url
-                  ? "bg-black/65 border border-white/15 text-white/85"
-                  : "bg-black/50 border border-white/10 text-white/55 italic"
-              }`}
+        {gallery.map((img, i) => {
+          const label = getSourceLabel(img);
+          return (
+            <button
+              key={`${img.url}-${i}`}
+              type="button"
+              onClick={() => setLightboxIndex(i)}
+              aria-label={
+                label
+                  ? `Enlarge image: ${label}`
+                  : `Enlarge image ${i + 1}`
+              }
+              className="relative aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/5 group cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 transition-colors hover:border-white/15"
             >
-              <span className="flex-1 truncate text-center">
-                {img.source_url
-                  ? (img.source_title ?? "source")
-                  : "source unknown"}
+              <Image
+                src={img.url}
+                alt={label ?? ""}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 50vw, 280px"
+                unoptimized
+              />
+              {/* Per-image attribution badge. Always visible (no hover gate)
+                  so credit travels with the image at first glance, per
+                  CARI usage guidelines. Falls back to "source unknown"
+                  when nothing was scraped from Are.na, so viewers don't
+                  assume we authored the image. */}
+              <span
+                className={`absolute bottom-1.5 left-1.5 right-1.5 inline-flex items-center gap-1 rounded-full backdrop-blur-sm px-2 py-1 text-[10px] pointer-events-none ${
+                  label
+                    ? "bg-black/65 border border-white/15 text-white/85"
+                    : "bg-black/50 border border-white/10 text-white/55 italic"
+                }`}
+              >
+                <span className="flex-1 truncate text-center">
+                  {label ?? "source unknown"}
+                </span>
               </span>
-            </span>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
       <p className="mt-4 text-white/30 text-[11px] leading-relaxed">
         Images shown for identification only, sourced via the{" "}

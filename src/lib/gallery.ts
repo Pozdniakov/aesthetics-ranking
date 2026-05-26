@@ -4,9 +4,23 @@ import type { Aesthetic } from "@/lib/supabase/types";
  * A single image in an aesthetic's gallery, with optional attribution
  * pulled from the original Are.na block. We surface this so creators get
  * credited per CARI's usage guidelines.
+ *
+ * The richness here matters: on Are.na the curator-written `title` is
+ * usually the work's name ("Posters for Making Time (2016)") and the
+ * `description` is usually "YEAR\nAUTHOR\n[optional URL]". The
+ * `source_*` fields are the block's outbound link, which only some
+ * blocks have. We store all of them so the UI can compose the best
+ * possible credit.
  */
 export interface GalleryItem {
   url: string;
+  /** Curator-written title from Are.na block.title. Usually the work name. */
+  title: string | null;
+  /**
+   * Curator-written description from Are.na block.description. Usually
+   * "YEAR\nAUTHOR\n[optional URL]" but the schema is not enforced.
+   */
+  description: string | null;
   /** Original source URL of the image (e.g. the artist's site or social link). */
   source_url: string | null;
   /** Optional human-readable title for the source. */
@@ -15,19 +29,30 @@ export interface GalleryItem {
 
 interface RawGalleryEntry {
   url?: unknown;
+  title?: unknown;
+  description?: unknown;
   source_url?: unknown;
   source_title?: unknown;
 }
 
 function toGalleryItem(value: unknown): GalleryItem | null {
   if (typeof value === "string") {
-    return { url: value, source_url: null, source_title: null };
+    return {
+      url: value,
+      title: null,
+      description: null,
+      source_url: null,
+      source_title: null,
+    };
   }
   if (value && typeof value === "object") {
     const obj = value as RawGalleryEntry;
     if (typeof obj.url !== "string") return null;
     return {
       url: obj.url,
+      title: typeof obj.title === "string" ? obj.title : null,
+      description:
+        typeof obj.description === "string" ? obj.description : null,
       source_url: typeof obj.source_url === "string" ? obj.source_url : null,
       source_title:
         typeof obj.source_title === "string" ? obj.source_title : null,
@@ -53,6 +78,8 @@ export function normalizeGallery(aesthetic: Aesthetic): GalleryItem[] {
     // ships without attribution data.
     items.push({
       url: aesthetic.cover_image_url,
+      title: null,
+      description: null,
       source_url: null,
       source_title: null,
     });
@@ -88,7 +115,13 @@ export function normalizeGallery(aesthetic: Aesthetic): GalleryItem[] {
     : [];
   for (const url of legacy) {
     if (typeof url !== "string") continue;
-    items.push({ url, source_url: null, source_title: null });
+    items.push({
+      url,
+      title: null,
+      description: null,
+      source_url: null,
+      source_title: null,
+    });
   }
   return dedupeByUrl(items);
 }
@@ -104,12 +137,15 @@ function dedupeByUrl(items: GalleryItem[]): GalleryItem[] {
 
 /**
  * Short attribution label for a single image, used by the always-visible
- * badge on swipe/compare cards. Prefers the human-readable
- * `source_title` from the Are.na block; falls back to the hostname; and
- * returns null when neither is known so the caller can render an
- * explicit "source unknown" placeholder.
+ * badge on swipe/compare cards. The priority chain picks the most
+ * descriptive thing available:
+ *   1. block.title   — usually the work name ("Posters for Making Time (2016)").
+ *   2. source_title  — usually the linked-out page title (often just a domain).
+ *   3. hostname      — last-resort, derived from source_url.
+ *   4. null          — caller renders an explicit "source unknown" placeholder.
  */
 export function getSourceLabel(item: GalleryItem): string | null {
+  if (item.title && item.title.trim()) return item.title.trim();
   if (item.source_title && item.source_title.trim()) {
     return item.source_title.trim();
   }
@@ -122,4 +158,55 @@ export function getSourceLabel(item: GalleryItem): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Parses the Are.na block.description into structured creator info.
+ * CARI's curators follow a loose convention of
+ *   YEAR\n
+ *   AUTHOR\n
+ *   [optional source URL]
+ * but it's not enforced. We heuristically pull out the year and URL and
+ * treat the remaining non-empty lines as the author/credit text. Falls
+ * back gracefully when the description does not fit the pattern.
+ */
+export interface ParsedAttribution {
+  year: string | null;
+  author: string | null;
+  url: string | null;
+  /** Full original description, with whitespace collapsed for display. */
+  raw: string | null;
+}
+
+export function parseAttribution(item: GalleryItem): ParsedAttribution {
+  const desc = item.description?.trim();
+  if (!desc) {
+    return { year: null, author: null, url: null, raw: null };
+  }
+  const lines = desc
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  let year: string | null = null;
+  let url: string | null = null;
+  const credit: string[] = [];
+  for (const line of lines) {
+    if (/^https?:\/\//i.test(line)) {
+      url ??= line;
+      continue;
+    }
+    // Year heuristic: a 4-digit number, optionally with a decade suffix
+    // (e.g. "1970s") or range ("2010-2015"). Keep it strict so we don't
+    // swallow lines like "1995 - Aldus PageMaker".
+    if (
+      !year &&
+      /^(?:19|20)\d{2}s?$/.test(line.replace(/[–-]\s*(19|20)\d{2}s?$/, ""))
+    ) {
+      year = line;
+      continue;
+    }
+    credit.push(line);
+  }
+  const author = credit.length > 0 ? credit.join(" · ") : null;
+  return { year, author, url, raw: desc };
 }
