@@ -28,9 +28,10 @@ export default function AboutPage() {
         >
           Ivan Pozdniakov
         </a>
-        . It lets you swipe through 90 visual aesthetics, pairwise-compare your
-        favourites, and end up with a personal top 5 plus a global leaderboard
-        aggregated across everyone&rsquo;s choices.
+        . It lets you skim through 90 visual aesthetics with a quick
+        like/skip pass, pairwise-compare your favourites, and end up with a
+        personal top 5 plus a global leaderboard aggregated across
+        everyone&rsquo;s choices.
       </p>
 
       <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">
@@ -112,13 +113,94 @@ export default function AboutPage() {
         How the ranking works
       </h2>
       <p className="mt-3 text-white/65 text-base leading-relaxed">
-        Phase one is a quick swipe through all 90 aesthetics. Phase two takes
-        only the ones you liked and feeds them into a Guarded Top-K Insertion
-        Sort &mdash; a small algorithm that finds your top 5 in roughly 18 to
-        30 comparisons (vs. ~45 for a naive ELO setup). The algorithm runs
-        entirely in your browser; only your final ranking and the individual
-        pairwise outcomes are saved (anonymously) to power the global board and
-        the &ldquo;mainstream vs niche&rdquo; taste score.
+        Phase one is a quick like/skip pass through all 90 aesthetics. Phase
+        two takes only the ones you liked and feeds them into a Guarded Top-K
+        Insertion Sort &mdash; a small algorithm that finds your top 5 in
+        roughly 18 to 30 comparisons (vs. ~45 for a naive ELO setup). The
+        algorithm runs entirely in your browser; only your final ranking and
+        the individual pairwise outcomes are saved (anonymously) to power the
+        global board and the &ldquo;mainstream vs niche&rdquo; taste score.
+      </p>
+
+      <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">
+        Privacy &amp; data
+      </h2>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        This project is built to need as little personal data as possible.
+        There is no sign-up, no email collection, and no third-party tracking
+        or advertising scripts. The site uses your browser&rsquo;s{" "}
+        <span className="font-mono text-white/80">localStorage</span> to
+        remember your progress across pages; that storage is functional and is
+        not used for marketing, so under the EU ePrivacy Directive no cookie
+        banner is required.
+      </p>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        <span className="text-white/80">What gets stored on the server.</span>{" "}
+        When you start comparing, an anonymous session row is created in a
+        Supabase (EU region) database. It contains:
+      </p>
+      <ul className="mt-2 text-white/65 text-sm leading-relaxed list-disc list-inside space-y-1 marker:text-white/30">
+        <li>
+          A random session UUID (no name, no email, no IP address recorded by
+          the application).
+        </li>
+        <li>
+          The display name you typed into the &ldquo;Before we begin&rdquo;
+          prompt, if any &mdash; this becomes visible on your shared ranking
+          page and as the contributor label on the global leaderboard.
+        </li>
+        <li>
+          Your pairwise comparison choices and final top 5, used to power the
+          global board and the &ldquo;mainstream vs niche&rdquo; score.
+        </li>
+        <li>
+          A short share slug, generated only if you create a public share
+          link.
+        </li>
+      </ul>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        <span className="text-white/80">Legal basis (GDPR Art. 6).</span> The
+        display name is processed on the basis of your{" "}
+        <em className="italic">consent</em> &mdash; you type it in yourself,
+        knowing from the prompt that it will be public on shared rankings and
+        on the leaderboard. The remaining data (comparisons, top 5) is
+        processed on the basis of <em className="italic">legitimate interest</em>
+        {" "}in operating the ranking and producing aggregate, anonymous
+        statistics.
+      </p>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        <span className="text-white/80">Your rights.</span> You can delete
+        everything attached to your browser at any time: clicking{" "}
+        <span className="text-white/80">Erase &amp; compare again</span> on
+        the ranking page now deletes your session row, all of your pairwise
+        comparisons, and your top 5 from the database, and then clears your
+        browser&rsquo;s local copy too. If you ever need help with deletion or
+        with correcting an attribution, open an issue on{" "}
+        <a
+          href="https://github.com/Pozdniakov/aesthetics-ranking/issues/new?title=Data+request"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-white transition-colors"
+        >
+          GitHub
+        </a>
+        {" "}or reach me through{" "}
+        <a
+          href="https://pozdniakov.github.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-white transition-colors"
+        >
+          pozdniakov.github.io
+        </a>
+        .
+      </p>
+      <p className="mt-3 text-white/65 text-base leading-relaxed">
+        <span className="text-white/80">Hosting &amp; processors.</span> The
+        site itself is served by Vercel (which retains short-lived access
+        logs); the application database is Supabase (EU region). Neither is
+        used for analytics or profiling beyond what is necessary to keep the
+        site online.
       </p>
 
       <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">

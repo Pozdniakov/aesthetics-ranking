@@ -6,19 +6,69 @@ const SESSION_KEY = "aesthetics_session_id";
 const DISPLAY_NAME_KEY = "aesthetics_display_name";
 const SHARE_URL_KEY = "aesthetics_share_url_v1";
 
+const LOCAL_STORAGE_KEYS = [
+  SESSION_KEY,
+  DISPLAY_NAME_KEY,
+  SHARE_URL_KEY,
+  "aesthetics_likes_v2",
+  "aesthetics_swipe_index_v2",
+  "aesthetics_insertion_state_v1",
+  "aesthetics_insertion_pool_v1",
+  "aesthetics_shuffle_seed_v1",
+];
+
+/**
+ * Best-effort server-side delete of the user's session row and (via the
+ * ON DELETE CASCADE foreign key) all of their comparisons. Awaited by
+ * `clearSessionAsync`; the synchronous `clearSession` wraps it in a
+ * fire-and-forget call for callers that can't await (e.g. the Erase
+ * button before a hard navigation).
+ *
+ * Requires the `sessions_delete` RLS policy from supabase/schema.sql.
+ * Without it the request silently fails and only the local copy is
+ * wiped — the user is still able to start fresh, just less cleanly.
+ */
+async function deleteServerSession(sessionId: string): Promise<void> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("ranking_sessions")
+      .delete()
+      .eq("id", sessionId);
+    if (error) {
+      console.warn("[clearSession] server delete failed:", error.message);
+    }
+  } catch (e) {
+    console.warn("[clearSession] server delete threw:", e);
+  }
+}
+
+/**
+ * Async erase: deletes the server-side row first (so GDPR right-to-erasure
+ * actually wipes the data, not just the local copy), then clears
+ * localStorage. Prefer this when the caller can await before navigating
+ * away.
+ */
+export async function clearSessionAsync(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const sessionId = getStoredSessionId();
+  if (sessionId) await deleteServerSession(sessionId);
+  LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+}
+
+/**
+ * Synchronous erase, kept for callers that can't await (e.g. UI handlers
+ * that immediately navigate). Fires the server delete in the background
+ * before wiping local state. The browser will keep the request alive
+ * across the hard navigation in modern browsers.
+ */
 export function clearSession(): void {
   if (typeof window === "undefined") return;
-  const keys = [
-    SESSION_KEY,
-    DISPLAY_NAME_KEY,
-    SHARE_URL_KEY,
-    "aesthetics_likes_v2",
-    "aesthetics_swipe_index_v2",
-    "aesthetics_insertion_state_v1",
-    "aesthetics_insertion_pool_v1",
-    "aesthetics_shuffle_seed_v1",
-  ];
-  keys.forEach((k) => localStorage.removeItem(k));
+  const sessionId = getStoredSessionId();
+  if (sessionId) {
+    void deleteServerSession(sessionId);
+  }
+  LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
 }
 
 export function getStoredShareUrl(): string | null {

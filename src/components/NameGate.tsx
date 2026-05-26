@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { setStoredDisplayName } from "@/lib/session";
 
@@ -42,10 +43,6 @@ export function NameGate({ onContinue }: Props) {
         </h2>
         <p className="text-white/55 text-base leading-relaxed">
           What should we call you?
-          <br />
-          <span className="text-white/35 text-sm">
-            Shown on shared rankings — leave blank to stay anonymous.
-          </span>
         </p>
       </div>
 
@@ -59,6 +56,21 @@ export function NameGate({ onContinue }: Props) {
           maxLength={40}
           className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 focus:border-white/40 focus:outline-none text-white text-base placeholder:text-white/25 transition-colors text-center"
         />
+        <p className="text-white/40 text-xs leading-snug text-left">
+          The name will be visible on your <em>shared ranking</em> page and as
+          your contributor label on the <em>global leaderboard</em>. Leave it
+          blank to stay anonymous — you can also wipe everything later with
+          the <span className="text-white/60">Erase &amp; compare again</span>{" "}
+          button. See the{" "}
+          <Link
+            href="/about"
+            target="_blank"
+            className="underline hover:text-white/70"
+          >
+            privacy notice
+          </Link>{" "}
+          for details.
+        </p>
         <button
           type="submit"
           disabled={submitting}

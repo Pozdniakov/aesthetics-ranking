@@ -14,7 +14,7 @@ import {
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { StageIndicator } from "@/components/StageIndicator";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
-import { normalizeGallery } from "@/lib/gallery";
+import { getSourceLabel, normalizeGallery } from "@/lib/gallery";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -88,6 +88,8 @@ export function SwipeCard({
     : aesthetic.decade;
 
   const activeUrl = allImages[activeIndex]?.url;
+  const activeImage = allImages[activeIndex];
+  const sourceLabel = activeImage ? getSourceLabel(activeImage) : null;
 
   return (
     <>
@@ -185,6 +187,34 @@ export function SwipeCard({
                     {activeIndex + 1} / {allImages.length}
                   </span>
                 </>
+              )}
+
+              {/* Source badge — always visible per CARI usage guidelines.
+                  Text-only inside the cover (the cover itself is a button,
+                  so we can't nest an <a>); the lightbox surfaces the
+                  clickable source link when the user zooms in. Rendered
+                  outside the multi-image conditional so single-image
+                  aesthetics still get attribution. */}
+              {activeUrl && (
+                <span
+                  className={`absolute top-2 left-2 z-10 inline-flex items-center max-w-[60%] px-2 py-0.5 rounded-full backdrop-blur-sm text-[10px] ${
+                    sourceLabel
+                      ? "bg-black/55 border border-white/15 text-white/85"
+                      : "bg-black/40 border border-white/10 text-white/55 italic"
+                  }`}
+                  title={
+                    sourceLabel
+                      ? `Source: ${sourceLabel}`
+                      : "Source unknown — via CARI archive"
+                  }
+                >
+                  <span className="uppercase tracking-widest text-[9px] text-white/45 mr-1">
+                    Src
+                  </span>
+                  <span className="truncate">
+                    {sourceLabel ?? "unknown"}
+                  </span>
+                </span>
               )}
             </div>
 

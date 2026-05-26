@@ -109,6 +109,15 @@ create policy "aesthetics_select_all" on aesthetics
 create policy "sessions_select" on ranking_sessions for select using (true);
 create policy "sessions_insert" on ranking_sessions for insert with check (true);
 create policy "sessions_update" on ranking_sessions for update using (true);
+-- Allows the "Erase & compare again" button to actually delete the user's
+-- row server-side (GDPR right to erasure). Risk is bounded: the session id
+-- is only ever kept in the owner's localStorage, never exposed in URLs
+-- (only the share_slug is public), so a third party would have to compromise
+-- the device to delete the row.
+create policy "sessions_delete" on ranking_sessions for delete using (true);
+-- comparisons rows are cascaded away when the session row is deleted
+-- (ON DELETE CASCADE foreign key above), so no separate delete policy is
+-- needed on the comparisons table.
 
 create policy "comparisons_select" on comparisons for select using (true);
 create policy "comparisons_insert" on comparisons for insert with check (true);

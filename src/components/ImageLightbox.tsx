@@ -113,6 +113,47 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         </span>
       )}
 
+      {/* Always-visible attribution strip pinned to the top. Per CARI
+          guidelines we credit the original source for every image we
+          surface; when the underlying Are.na block has no source link
+          we still tell the viewer that explicitly so they don't assume
+          we authored it. The strip stops click propagation so tapping
+          the link doesn't close the lightbox. */}
+      <div
+        className="absolute inset-x-0 top-16 sm:top-20 z-10 flex justify-center px-4 pointer-events-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {current.source_url ? (
+          <a
+            href={current.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-auto inline-flex items-center gap-2 max-w-[90vw] rounded-full bg-black/70 backdrop-blur-md border border-white/15 px-3.5 py-1.5 text-white/85 text-xs sm:text-sm hover:bg-black/85 hover:text-white transition-colors"
+            title={current.source_title ?? current.source_url}
+          >
+            <span className="text-white/45 uppercase tracking-widest text-[10px] flex-shrink-0">
+              Source
+            </span>
+            <span className="truncate">
+              {current.source_title ?? stripUrlScheme(current.source_url)}
+            </span>
+            <ExternalLink
+              className="w-3.5 h-3.5 flex-shrink-0 opacity-75"
+              strokeWidth={1.75}
+            />
+          </a>
+        ) : (
+          <span className="inline-flex items-center gap-2 max-w-[90vw] rounded-full bg-black/55 backdrop-blur-md border border-white/10 px-3.5 py-1.5 text-white/55 text-xs">
+            <span className="text-white/35 uppercase tracking-widest text-[10px] flex-shrink-0">
+              Source
+            </span>
+            <span className="italic">unknown — via CARI archive</span>
+          </span>
+        )}
+      </div>
+
+
       {total > 1 && (
         <>
           <button
@@ -161,30 +202,12 @@ export function ImageLightbox({ images, initialIndex = 0, alt = "", onClose }: P
         />
       </div>
 
-      {/* Bottom bar: per-image source attribution on the left, navigation
-          hint on the right. Stops click-through so tapping the source link
-          doesn't close the lightbox. */}
+      {/* Bottom bar: navigation hint only — per-image source attribution
+          now lives at the top of the lightbox so it's visible even when
+          the user is zoomed in. */}
       <div
-        className="absolute inset-x-0 bottom-3 sm:bottom-4 flex items-center justify-center gap-3 px-4 pointer-events-none"
-        onClick={(e) => e.stopPropagation()}
+        className="absolute inset-x-0 bottom-3 sm:bottom-4 flex items-center justify-center px-4 pointer-events-none"
       >
-        {current.source_url ? (
-          <a
-            href={current.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="pointer-events-auto inline-flex items-center gap-1.5 text-white/55 hover:text-white text-[10px] sm:text-xs font-mono uppercase tracking-widest transition-colors max-w-[60vw] truncate"
-            title={current.source_title ?? current.source_url}
-          >
-            <span className="truncate">
-              source:{" "}
-              {current.source_title ??
-                stripUrlScheme(current.source_url)}
-            </span>
-            <ExternalLink className="w-3 h-3 flex-shrink-0" strokeWidth={1.75} />
-          </a>
-        ) : null}
         <span className="text-white/30 text-[10px] font-mono uppercase tracking-widest select-none">
           {zoomed
             ? "tap image to zoom out"

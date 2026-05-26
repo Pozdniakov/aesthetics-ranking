@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowUpRight, ZoomIn } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useHorizontalWheel } from "@/hooks/useHorizontalWheel";
-import { normalizeGallery } from "@/lib/gallery";
+import { getSourceLabel, normalizeGallery } from "@/lib/gallery";
 import type { Aesthetic } from "@/lib/supabase/types";
 
 interface Props {
@@ -38,6 +38,8 @@ export function AestheticCard({ aesthetic, side }: Props) {
     : aesthetic.decade ?? null;
 
   const activeUrl = allImages[activeIndex]?.url;
+  const activeImage = allImages[activeIndex];
+  const sourceLabel = activeImage ? getSourceLabel(activeImage) : null;
 
   return (
     <>
@@ -87,6 +89,29 @@ export function AestheticCard({ aesthetic, side }: Props) {
           <span className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 text-white/85 opacity-80 sm:opacity-0 sm:group-hover/img:opacity-100 transition-opacity">
             <ZoomIn className="w-4 h-4" strokeWidth={1.75} />
           </span>
+
+          {/* Source badge — always visible per CARI usage guidelines.
+              A <span> is fine inside a <button>; the lightbox provides
+              the clickable source link when the user zooms in. */}
+          {activeUrl && (
+            <span
+              className={`absolute top-2 left-2 inline-flex items-center max-w-[80%] px-2 py-0.5 rounded-full backdrop-blur-sm text-[10px] ${
+                sourceLabel
+                  ? "bg-black/55 border border-white/15 text-white/85"
+                  : "bg-black/40 border border-white/10 text-white/55 italic"
+              }`}
+              title={
+                sourceLabel
+                  ? `Source: ${sourceLabel}`
+                  : "Source unknown — via CARI archive"
+              }
+            >
+              <span className="uppercase tracking-widest text-[9px] text-white/45 mr-1">
+                Src
+              </span>
+              <span className="truncate">{sourceLabel ?? "unknown"}</span>
+            </span>
+          )}
         </button>
 
         {/* Gallery thumbs — always render this band even when there are

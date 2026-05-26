@@ -101,3 +101,25 @@ function dedupeByUrl(items: GalleryItem[]): GalleryItem[] {
     return true;
   });
 }
+
+/**
+ * Short attribution label for a single image, used by the always-visible
+ * badge on swipe/compare cards. Prefers the human-readable
+ * `source_title` from the Are.na block; falls back to the hostname; and
+ * returns null when neither is known so the caller can render an
+ * explicit "source unknown" placeholder.
+ */
+export function getSourceLabel(item: GalleryItem): string | null {
+  if (item.source_title && item.source_title.trim()) {
+    return item.source_title.trim();
+  }
+  if (item.source_url) {
+    try {
+      const u = new URL(item.source_url);
+      return u.hostname.replace(/^www\./, "");
+    } catch {
+      return item.source_url;
+    }
+  }
+  return null;
+}

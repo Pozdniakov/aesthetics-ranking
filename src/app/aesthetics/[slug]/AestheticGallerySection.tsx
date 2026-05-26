@@ -61,13 +61,24 @@ export function AestheticGallerySection({
               sizes="(max-width: 640px) 50vw, 280px"
               unoptimized
             />
-            {img.source_url && (
-              <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm border border-white/15 px-2 py-1 text-white/85 text-[10px] opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pointer-events-none">
-                <span className="max-w-[120px] truncate">
-                  {img.source_title ?? "source"}
-                </span>
+            {/* Per-image attribution badge. Always visible (no hover gate)
+                so credit travels with the image at first glance, per
+                CARI usage guidelines. Falls back to "source unknown"
+                when the underlying Are.na block had no source link, so
+                viewers don't assume we authored the image. */}
+            <span
+              className={`absolute bottom-1.5 left-1.5 right-1.5 inline-flex items-center gap-1 rounded-full backdrop-blur-sm px-2 py-1 text-[10px] pointer-events-none ${
+                img.source_url
+                  ? "bg-black/65 border border-white/15 text-white/85"
+                  : "bg-black/50 border border-white/10 text-white/55 italic"
+              }`}
+            >
+              <span className="flex-1 truncate text-center">
+                {img.source_url
+                  ? (img.source_title ?? "source")
+                  : "source unknown"}
               </span>
-            )}
+            </span>
           </button>
         ))}
       </div>
