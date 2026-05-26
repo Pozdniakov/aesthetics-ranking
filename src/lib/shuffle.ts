@@ -5,8 +5,7 @@
  * stays consistent across reloads for the same user, but differs between users.
  * `clearSession()` removes the seed so "Reset" gives a fresh deck.
  */
-
-export const SHUFFLE_SEED_KEY = "aesthetics_shuffle_seed_v1";
+import { SHUFFLE_SEED_KEY } from "@/lib/session";
 
 function isBrowser() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";

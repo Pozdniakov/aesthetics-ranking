@@ -136,16 +136,14 @@ export default function AboutPage() {
       <ol className="mt-3 text-white/65 text-base leading-relaxed list-decimal list-inside space-y-1.5 marker:text-white/30">
         <li>
           Take every comparison anyone has ever made on the site, excluding
-          your own current session, and count how many times each aesthetic
-          has been chosen as the winner. Call that number{" "}
-          <span className="font-mono text-white/85">wins(a)</span> for
-          aesthetic <span className="font-mono text-white/85">a</span>.
+          your own current session, and count wins and losses for each
+          aesthetic.
         </li>
         <li>
-          Sort all aesthetics that have ever won at least one comparison by{" "}
-          <span className="font-mono text-white/85">wins</span> in descending
-          order. The most popular aesthetic gets rank 0, the next gets rank
-          1, and so on up to <span className="font-mono text-white/85">N&minus;1</span>.
+          Calculate a smoothed win rate for every aesthetic, then sort by that
+          value in descending order. The most popular aesthetic gets rank 0,
+          the next gets rank 1, and so on up to{" "}
+          <span className="font-mono text-white/85">N&minus;1</span>.
         </li>
         <li>
           For each aesthetic in your top 5, compute its percentile{" "}
@@ -160,9 +158,14 @@ export default function AboutPage() {
         </li>
       </ol>
       <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-mono text-white/75 text-sm leading-relaxed">
-        <p>score = round( mean<sub>i</sub>( p<sub>i</sub> ) &times; 100 )</p>
+        <p>
+          popularity(a) = (wins(a) + 1) / (wins(a) + losses(a) + 2)
+        </p>
         <p className="mt-1">
           p<sub>i</sub> = rank<sub>i</sub> / (N &minus; 1)
+        </p>
+        <p className="mt-1">
+          score = round( mean<sub>i</sub>( p<sub>i</sub> ) &times; 100 )
         </p>
         <p className="mt-1 text-white/45 text-xs">
           rank<sub>i</sub> &mdash; 0-based position of your i-th favourite in
@@ -180,12 +183,11 @@ export default function AboutPage() {
         lines up with the centre of everyone else&rsquo;s choices.
       </p>
       <p className="mt-3 text-white/45 text-sm leading-relaxed">
-        Caveat: because the score is calculated from raw win counts across
-        every comparison, the most-liked aesthetics on the front of the
-        catalogue tend to accumulate wins simply by being shown more often
-        in phase two. The score is best read as &ldquo;how I compare with
-        other rankers on this site&rdquo;, not as an objective measure of
-        cultural mainstream-ness.
+        Caveat: the smoothing keeps low-data aesthetics from jumping straight
+        to the top or bottom, but the score is still based only on choices made
+        inside this site. It is best read as &ldquo;how I compare with other
+        rankers here&rdquo;, not as an objective measure of cultural
+        mainstream-ness.
       </p>
 
       <h2 className="mt-10 text-white text-lg font-semibold tracking-tight">

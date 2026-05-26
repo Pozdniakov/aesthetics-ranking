@@ -16,29 +16,27 @@ import {
   type InsertionState,
 } from "@/lib/guarded-insertion";
 import type { Aesthetic } from "@/lib/supabase/types";
+import { INSERTION_POOL_KEY, INSERTION_STATE_KEY } from "@/lib/session";
 
 export interface RatedAesthetic extends Aesthetic {
   rank: number; // 1-based position in top-K, or K+1 for unranked
 }
 
-const STATE_KEY = "aesthetics_insertion_state_v1";
-const POOL_KEY = "aesthetics_insertion_pool_v1";
-
 function loadInsertionState(): InsertionState | null {
   try {
-    const raw = localStorage.getItem(STATE_KEY);
+    const raw = localStorage.getItem(INSERTION_STATE_KEY);
     return raw ? (JSON.parse(raw) as InsertionState) : null;
   } catch { return null; }
 }
 
 function saveState(s: InsertionState, pool: string[]) {
-  localStorage.setItem(STATE_KEY, JSON.stringify(s));
-  localStorage.setItem(POOL_KEY, JSON.stringify(pool));
+  localStorage.setItem(INSERTION_STATE_KEY, JSON.stringify(s));
+  localStorage.setItem(INSERTION_POOL_KEY, JSON.stringify(pool));
 }
 
 function loadPool(): string[] | null {
   try {
-    const raw = localStorage.getItem(POOL_KEY);
+    const raw = localStorage.getItem(INSERTION_POOL_KEY);
     return raw ? (JSON.parse(raw) as string[]) : null;
   } catch { return null; }
 }
@@ -50,6 +48,8 @@ export function useSession(likedIds: string[]) {
   const [currentPair, setCurrentPair] = useState<[Aesthetic, Aesthetic] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [poolSize, setPoolSize] = useState(0);
+  const [historyLength, setHistoryLength] = useState(0);
 
   const supabase = createClient();
   const aestheticsRef = useRef<Aesthetic[]>([]);
@@ -108,6 +108,8 @@ export function useSession(likedIds: string[]) {
     if (a && b) setCurrentPair(Math.random() > 0.5 ? [a, b] : [b, a]);
   }
 
+  const likedIdsKey = likedIds.join(",");
+
   // Initialize once aesthetics are loaded
   useEffect(() => {
     if (!aesthetics.length) return;
@@ -119,8 +121,11 @@ export function useSession(likedIds: string[]) {
     if (!likedIds.length) {
       if (storedPool && storedState) {
         poolRef.current = storedPool;
-        setInsertState(storedState);
-        resolveAndSetPair(storedState);
+        queueMicrotask(() => {
+          setPoolSize(storedPool.length);
+          setInsertState(storedState);
+          resolveAndSetPair(storedState);
+        });
       }
       return;
     }
@@ -150,10 +155,13 @@ export function useSession(likedIds: string[]) {
     }
 
     poolRef.current = pool;
-    setInsertState(state);
-    resolveAndSetPair(state);
+    queueMicrotask(() => {
+      setPoolSize(pool.length);
+      setInsertState(state);
+      resolveAndSetPair(state);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aesthetics, likedIds.join(",")]);
+  }, [aesthetics, likedIdsKey]);
 
   useEffect(() => {
     async function init() {
@@ -184,7 +192,8 @@ export function useSession(likedIds: string[]) {
       if (!insertState || !sessionId) return;
       // Push snapshot to undo history before applying
       historyRef.current = [...historyRef.current, insertState];
-      const newState = applyResult(insertState, winnerId, loserId);
+      setHistoryLength(historyRef.current.length);
+      const newState = applyResult(insertState, winnerId);
       setInsertState(newState);
       saveState(newState, poolRef.current);
       resolveAndSetPair(newState);
@@ -204,6 +213,7 @@ export function useSession(likedIds: string[]) {
     if (historyRef.current.length === 0) return;
     const prev = historyRef.current[historyRef.current.length - 1];
     historyRef.current = historyRef.current.slice(0, -1);
+    setHistoryLength(historyRef.current.length);
     setInsertState(prev);
     saveState(prev, poolRef.current);
     resolveAndSetPair(prev);
@@ -211,7 +221,7 @@ export function useSession(likedIds: string[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const canUndo = historyRef.current.length > 0;
+  const canUndo = historyLength > 0;
 
   const skip = useCallback(() => {
     if (insertState) resolveAndSetPair(insertState);
@@ -221,7 +231,7 @@ export function useSession(likedIds: string[]) {
   const topK = insertState ? getTopK(insertState) : [];
   const complete = !!insertState && isComplete(insertState);
   const { done, estimate } = insertState
-    ? getProgress(insertState, poolRef.current.length)
+    ? getProgress(insertState, poolSize)
     : { done: 0, estimate: 0 };
 
   const rankedPool: RatedAesthetic[] = (() => {

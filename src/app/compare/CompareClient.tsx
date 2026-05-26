@@ -65,7 +65,9 @@ function CompareInner({ aesthetics }: { aesthetics: Aesthetic[] }) {
   useEffect(() => {
     if (!swipe.loaded) return;
     const freshStart = swipe.currentIndex === 0 && swipe.likedIds.length === 0;
-    setNameGateOpen(freshStart && !getStoredDisplayName());
+    queueMicrotask(() => {
+      setNameGateOpen(freshStart && !getStoredDisplayName());
+    });
   }, [swipe.loaded, swipe.currentIndex, swipe.likedIds.length]);
 
   // The CompletionScreen used to live here, but it duplicated /ranking.

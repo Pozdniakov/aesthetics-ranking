@@ -25,9 +25,12 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aesthetics Ranking",
+  title: {
+    default: "Æsthetics ranking",
+    template: "%s · Æsthetics ranking",
+  },
   description:
-    "Compare visual aesthetics side by side and discover your top 5.",
+    "Compare visual aesthetics side by side and discover your personal top 5.",
   // Allow crawlers to index the pages, but ask them not to surface the
   // images themselves in Google Images / Bing Images search. This keeps
   // the site from becoming an inadvertent free-asset gallery for content

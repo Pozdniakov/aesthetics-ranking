@@ -85,11 +85,11 @@ export function nextPair(state: InsertionState): [string, string] | null {
  */
 export function applyResult(
   state: InsertionState,
-  winnerId: string,
-  loserId: string
+  winnerId: string
 ): InsertionState {
   const done = state.done + 1;
-  let { remaining, sorted } = state;
+  let { remaining } = state;
+  const { sorted } = state;
 
   // ── Continuing a binary search ─────────────────────────────
   if (state.pending) {

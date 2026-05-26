@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@/lib/supabase/server";
+import { calculateNicheScore } from "@/lib/niche";
 
 export const alt = "Aesthetics ranking — top 5 and taste profile";
 export const size = { width: 1200, height: 630 };
@@ -22,18 +23,6 @@ interface AestheticTile {
 }
 
 const PAGE_SIZE = 1000;
-const NICHE_LABELS = [
-  { max: 20, label: "Very mainstream" },
-  { max: 40, label: "Mainstream" },
-  { max: 60, label: "Mixed taste" },
-  { max: 80, label: "Niche" },
-  { max: 101, label: "Very niche" },
-];
-
-function labelFor(score: number) {
-  return NICHE_LABELS.find((l) => score < l.max)?.label ?? "Very niche";
-}
-
 function fallback(message: string) {
   return new ImageResponse(
     (
@@ -120,34 +109,32 @@ export default async function Image({
   let nicheScore = 50;
   let nicheLabel = "Mixed taste";
   if (topIds.length > 0) {
-    const globalWins = new Map<string, number>();
+    const globalRows: Array<{
+      winner_id: string;
+      loser_id: string;
+      session_id: string;
+    }> = [];
     let from = 0;
     while (true) {
       const { data: rows } = await supabase
         .from("comparisons")
-        .select("winner_id, session_id")
+        .select("winner_id, loser_id, session_id")
         .range(from, from + PAGE_SIZE - 1);
       if (!rows || rows.length === 0) break;
-      for (const r of rows as Array<{ winner_id: string; session_id: string }>) {
-        if (r.session_id === sessionRow.id) continue;
-        globalWins.set(r.winner_id, (globalWins.get(r.winner_id) ?? 0) + 1);
-      }
+      globalRows.push(
+        ...(rows as Array<{
+          winner_id: string;
+          loser_id: string;
+          session_id: string;
+        }>)
+      );
       if (rows.length < PAGE_SIZE) break;
       from += PAGE_SIZE;
     }
-    if (globalWins.size > 0) {
-      const ranked = [...globalWins.keys()].sort(
-        (a, b) => (globalWins.get(b) ?? 0) - (globalWins.get(a) ?? 0)
-      );
-      const total = ranked.length;
-      const percentiles = topIds.map((id) => {
-        const rank = ranked.indexOf(id);
-        return rank === -1 ? 1 : rank / Math.max(total - 1, 1);
-      });
-      const avg =
-        percentiles.reduce((acc, p) => acc + p, 0) / percentiles.length;
-      nicheScore = Math.round(avg * 100);
-      nicheLabel = labelFor(nicheScore);
+    const score = calculateNicheScore(topIds, globalRows, sessionRow.id);
+    if (score) {
+      nicheScore = score.score;
+      nicheLabel = score.label;
     }
   }
 
@@ -246,7 +233,6 @@ export default async function Image({
                 }}
               >
                 {a.cover_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={a.cover_image_url}
                     alt=""

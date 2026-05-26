@@ -18,6 +18,7 @@ interface AggRow extends Aesthetic {
 }
 
 const PAGE_SIZE = 1000;
+const ALL_DECADES = "all";
 
 export function GlobalRankingClient() {
   const [aesthetics, setAesthetics] = useState<Aesthetic[]>([]);
@@ -25,6 +26,7 @@ export function GlobalRankingClient() {
   const [lossesMap, setLossesMap] = useState<Map<string, number>>(new Map());
   const [sessions, setSessions] = useState<Set<string>>(new Set());
   const [totalComparisons, setTotalComparisons] = useState(0);
+  const [selectedDecade, setSelectedDecade] = useState(ALL_DECADES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +96,21 @@ export function GlobalRankingClient() {
 
   const visible = ranked.filter((r) => r.appearances > 0);
   const dormant = ranked.filter((r) => r.appearances === 0);
+  const decades = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          ranked
+            .map((r) => r.start_year ?? r.decade)
+            .filter((value): value is string => Boolean(value))
+        )
+      ).sort(),
+    [ranked]
+  );
+  const filteredVisible =
+    selectedDecade === ALL_DECADES
+      ? visible
+      : visible.filter((r) => (r.start_year ?? r.decade) === selectedDecade);
 
   if (loading) {
     return (
@@ -165,14 +182,44 @@ export function GlobalRankingClient() {
         </Link>
       </div>
 
+      {decades.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-thin">
+          <button
+            type="button"
+            onClick={() => setSelectedDecade(ALL_DECADES)}
+            className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-mono transition-colors ${
+              selectedDecade === ALL_DECADES
+                ? "border-white/40 bg-white/15 text-white"
+                : "border-white/10 bg-white/5 text-white/45 hover:text-white/75"
+            }`}
+          >
+            All
+          </button>
+          {decades.map((decade) => (
+            <button
+              key={decade}
+              type="button"
+              onClick={() => setSelectedDecade(decade)}
+              className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-mono transition-colors ${
+                selectedDecade === decade
+                  ? "border-white/40 bg-white/15 text-white"
+                  : "border-white/10 bg-white/5 text-white/45 hover:text-white/75"
+              }`}
+            >
+              {decade}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Top 3 podium — crowns float above each card */}
-      {visible.length >= 3 && (
+      {filteredVisible.length >= 3 && (
         <div className="grid grid-cols-3 gap-3 mt-2 items-end">
-          {[visible[1], visible[0], visible[2]].map((row, i) => {
+          {[filteredVisible[1], filteredVisible[0], filteredVisible[2]].map((row, i) => {
             // Display order: 2nd · 1st · 3rd to evoke a podium silhouette.
-            const realPos = (row === visible[0]
+            const realPos = (row === filteredVisible[0]
               ? 1
-              : row === visible[1]
+              : row === filteredVisible[1]
                 ? 2
                 : 3) as 1 | 2 | 3;
             const cardHeights = ["h-40 sm:h-44", "h-52 sm:h-56", "h-36 sm:h-40"];
@@ -257,63 +304,69 @@ export function GlobalRankingClient() {
       )}
 
       {/* Full list */}
-      <ol className="flex flex-col">
-        {visible.map((row, i) => (
-          <li key={row.id}>
-            <Link
-              href={`/aesthetics/${row.slug}`}
-              className="group flex items-center gap-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-            >
-              <span className="w-8 text-right flex-shrink-0 font-mono tabular-nums text-white/30 text-sm group-hover:text-white/60 transition-colors">
-                {i + 1}
-              </span>
-              <div className="relative w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-800 border border-white/10">
-                {row.cover_image_url && (
-                  <Image
-                    src={row.cover_image_url}
-                    alt={row.name}
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                    unoptimized
-                  />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="font-display text-white text-base truncate group-hover:underline decoration-white/30 underline-offset-4"
-                  style={{ fontVariationSettings: '"opsz" 96' }}
-                >
-                  {row.name}
-                </p>
-                <p className="text-white/30 text-xs font-mono mt-0.5">
-                  {formatYears(row) ?? "—"}
-                </p>
-              </div>
-              {/* Win rate bar */}
-              <div className="hidden sm:flex flex-col items-end flex-shrink-0 w-32 gap-1">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-mono tabular-nums text-white text-sm">
-                    {Math.round(row.rawWinRate * 100)}%
-                  </span>
-                  <span className="text-white/30 text-[10px] font-mono">
-                    {row.wins}W/{row.losses}L
-                  </span>
+      {filteredVisible.length > 0 ? (
+        <ol className="flex flex-col">
+          {filteredVisible.map((row, i) => (
+            <li key={row.id}>
+              <Link
+                href={`/aesthetics/${row.slug}`}
+                className="group flex items-center gap-4 py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+              >
+                <span className="w-8 text-right flex-shrink-0 font-mono tabular-nums text-white/30 text-sm group-hover:text-white/60 transition-colors">
+                  {i + 1}
+                </span>
+                <div className="relative w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-800 border border-white/10">
+                  {row.cover_image_url && (
+                    <Image
+                      src={row.cover_image_url}
+                      alt={row.name}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  )}
                 </div>
-                <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-white/70 rounded-full transition-all"
-                    style={{ width: `${row.rawWinRate * 100}%` }}
-                  />
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-display text-white text-base truncate group-hover:underline decoration-white/30 underline-offset-4"
+                    style={{ fontVariationSettings: '"opsz" 96' }}
+                  >
+                    {row.name}
+                  </p>
+                  <p className="text-white/30 text-xs font-mono mt-0.5">
+                    {formatYears(row) ?? "—"}
+                  </p>
                 </div>
-              </div>
-              <span className="sm:hidden flex-shrink-0 font-mono tabular-nums text-white text-sm">
-                {Math.round(row.rawWinRate * 100)}%
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ol>
+                {/* Win rate bar */}
+                <div className="hidden sm:flex flex-col items-end flex-shrink-0 w-32 gap-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-mono tabular-nums text-white text-sm">
+                      {Math.round(row.rawWinRate * 100)}%
+                    </span>
+                    <span className="text-white/30 text-[10px] font-mono">
+                      {row.wins}W/{row.losses}L
+                    </span>
+                  </div>
+                  <div className="w-full h-[2px] bg-white/10 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/70 rounded-full transition-all"
+                      style={{ width: `${row.rawWinRate * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="sm:hidden flex-shrink-0 font-mono tabular-nums text-white text-sm">
+                  {Math.round(row.rawWinRate * 100)}%
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-white/40 text-sm">
+          No voted aesthetics in this decade yet.
+        </div>
+      )}
 
       {dormant.length > 0 && (
         <details className="group mt-4">

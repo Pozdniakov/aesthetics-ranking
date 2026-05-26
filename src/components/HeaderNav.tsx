@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { EraseRankingButton } from "./EraseRankingButton";
+import { LIKES_KEY, SESSION_KEY, SWIPE_INDEX_KEY } from "@/lib/session";
 
 function detectProgress(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const likes = localStorage.getItem("aesthetics_likes_v2");
-    const idx = localStorage.getItem("aesthetics_swipe_index_v2");
-    const sessionId = localStorage.getItem("aesthetics_session_id");
+    const likes = localStorage.getItem(LIKES_KEY);
+    const idx = localStorage.getItem(SWIPE_INDEX_KEY);
+    const sessionId = localStorage.getItem(SESSION_KEY);
     const hasLikes = !!likes && JSON.parse(likes).length > 0;
     const hasSwiped = !!idx && parseInt(idx, 10) > 0;
     return !!sessionId || hasLikes || hasSwiped;
@@ -27,7 +28,7 @@ export function HeaderNav() {
   const [hasProgress, setHasProgress] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setHasProgress(detectProgress());
+    queueMicrotask(() => setHasProgress(detectProgress()));
   }, [pathname]);
 
   useEffect(() => {

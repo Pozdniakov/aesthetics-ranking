@@ -25,7 +25,7 @@ export function AestheticCard({ aesthetic, side }: Props) {
   const galleryRef = useHorizontalWheel<HTMLDivElement>();
 
   useEffect(() => {
-    setActiveIndex(0);
+    queueMicrotask(() => setActiveIndex(0));
   }, [aesthetic.id]);
 
   const years = formatYears(aesthetic);

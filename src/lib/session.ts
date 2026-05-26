@@ -2,19 +2,24 @@
 
 import { createClient } from "@/lib/supabase/client";
 
-const SESSION_KEY = "aesthetics_session_id";
-const DISPLAY_NAME_KEY = "aesthetics_display_name";
-const SHARE_URL_KEY = "aesthetics_share_url_v1";
+export const SESSION_KEY = "aesthetics_session_id";
+export const DISPLAY_NAME_KEY = "aesthetics_display_name";
+export const SHARE_URL_KEY = "aesthetics_share_url_v1";
+export const LIKES_KEY = "aesthetics_likes_v2";
+export const SWIPE_INDEX_KEY = "aesthetics_swipe_index_v2";
+export const INSERTION_STATE_KEY = "aesthetics_insertion_state_v1";
+export const INSERTION_POOL_KEY = "aesthetics_insertion_pool_v1";
+export const SHUFFLE_SEED_KEY = "aesthetics_shuffle_seed_v1";
 
-const LOCAL_STORAGE_KEYS = [
+export const LOCAL_STORAGE_KEYS = [
   SESSION_KEY,
   DISPLAY_NAME_KEY,
   SHARE_URL_KEY,
-  "aesthetics_likes_v2",
-  "aesthetics_swipe_index_v2",
-  "aesthetics_insertion_state_v1",
-  "aesthetics_insertion_pool_v1",
-  "aesthetics_shuffle_seed_v1",
+  LIKES_KEY,
+  SWIPE_INDEX_KEY,
+  INSERTION_STATE_KEY,
+  INSERTION_POOL_KEY,
+  SHUFFLE_SEED_KEY,
 ];
 
 /**

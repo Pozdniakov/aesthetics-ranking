@@ -49,7 +49,7 @@ export function SwipeCard({
   const galleryRef = useHorizontalWheel<HTMLDivElement>();
 
   useEffect(() => {
-    setActiveIndex(0);
+    queueMicrotask(() => setActiveIndex(0));
   }, [aesthetic.id]);
 
   // Keyboard navigation through the gallery thumbnails. Skip when the

@@ -26,7 +26,9 @@ export function AestheticPageBackLink() {
     // history.length is at least 1 (the current entry). Anything > 1
     // usually means we have somewhere to go back to. SPA-internal
     // navigations also bump it.
-    setCanGoBack(typeof window !== "undefined" && window.history.length > 1);
+    queueMicrotask(() => {
+      setCanGoBack(typeof window !== "undefined" && window.history.length > 1);
+    });
   }, []);
 
   const label = canGoBack === false ? "View your ranking" : "Back";

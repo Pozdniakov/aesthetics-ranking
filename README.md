@@ -1,107 +1,112 @@
-# Aesthetics Ranking
+# Æsthetics Ranking
 
-Compare visual aesthetics from [CARI Institute](https://cari.institute/aesthetics) side by side and build your personal ELO ranking. Share your ranking with a unique link.
+A small, non-commercial ranker for visual aesthetics sourced from the
+[CARI Institute](https://cari.institute/aesthetics) archive and its linked
+Are.na channels. The app helps people skim through the catalogue, compare the
+aesthetics they liked, and share a personal top 5.
 
 ## Features
 
-- Pairwise comparison of 90 aesthetics
-- ELO ranking algorithm (K=32)
-- Smart pair selection (random early on, closest-rated later)
-- Optional sign-in (Google OAuth) — works without an account, ratings persist via anonymous Supabase session
-- Shareable links (`/share/<slug>`) for read-only ranking views
+- Like/skip discovery pass through the aesthetics catalogue.
+- Guarded Top-5 Insertion ranking algorithm, usually finishing in roughly 18-30
+  comparisons for 10-15 liked aesthetics.
+- Personal top 5, public share links, Open Graph images, and a global ranking.
+- Mainstream-to-niche taste profile based on other users' aggregate choices.
+- Internal aesthetic detail pages with CARI/Are.na attribution, image lightbox,
+  and click-to-load video embeds.
+- Anonymous Supabase sessions; no sign-up or email collection.
 
 ## Stack
 
-- **Next.js 16** (App Router)
-- **Supabase** (PostgreSQL + Auth)
-- **Tailwind CSS + shadcn/ui**
-- **Vercel** for hosting
+- Next.js 16 App Router
+- React 19 + TypeScript strict
+- Tailwind CSS + shadcn/ui
+- Supabase Postgres with RLS
+- Vercel hosting
 
 ## Setup
 
 ### 1. Create a Supabase project
 
-Go to [supabase.com](https://supabase.com), create a new project.
+Create a project at [supabase.com](https://supabase.com), then open the SQL
+Editor and run [`supabase/schema.sql`](supabase/schema.sql).
 
-### 2. Run the schema SQL
+### 2. Configure environment variables
 
-In Supabase Dashboard → SQL Editor, run the contents of [`supabase/schema.sql`](supabase/schema.sql).
-
-### 3. Configure environment variables
+Create `.env.local`:
 
 ```bash
-cp .env.local.example .env.local
-```
-
-Fill in your Supabase project URL and anon key from **Settings → API**.
-
-```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-### 4. Seed aesthetics
+`SUPABASE_SERVICE_ROLE_KEY` is only needed for the seed script.
 
-Run the seed script to fetch all aesthetics from CARI and populate your database.
-Requires a **service role key** to bypass RLS:
+### 3. Seed the catalogue
+
+The seed script fetches CARI metadata and enriches images/videos from Are.na:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed
+npm run seed
 ```
 
-Or with anon key if you temporarily disable RLS on `aesthetics`:
+For refreshing only existing rows after schema or enrichment changes:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run seed
+npm run seed -- --enrich-only --concurrency=1 --delay-ms=1500
 ```
 
-### 5. Enable Google OAuth (optional)
+Are.na rate-limits aggressively; keep concurrency low.
 
-In Supabase Dashboard → Authentication → Providers → Google, enable Google OAuth and add your credentials.
-
-Add the callback URL to Google Cloud Console:
-```
-https://your-project.supabase.co/auth/v1/callback
-```
-
-### 6. Run locally
+### 4. Run locally
 
 ```bash
+npm install
 npm run dev
 ```
 
-## Deploy to Vercel
+## Deployment
 
-```bash
-npm install -g vercel
-vercel
-```
+Deploy to Vercel and set:
 
-Set the same environment variables in Vercel project settings:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+Run the Supabase schema manually before the first deploy. Run the seed script
+locally or from a trusted environment with `SUPABASE_SERVICE_ROLE_KEY`.
+
 ## Project Structure
 
-```
+```text
 src/
   app/
-    compare/          # Main comparison page
-    ranking/          # Personal ranking page
-    share/[slug]/     # Read-only shared ranking
-    auth/callback/    # OAuth callback handler
-  components/
-    AestheticCard     # Clickable aesthetic comparison card
-    RankingList       # Ranked list with ELO scores
-    AuthButton        # Google sign-in / sign-out
+    compare/              # Discovery + pairwise comparison flow
+    ranking/              # Personal ranking and share link
+    global/               # Aggregate global leaderboard
+    share/[slug]/         # Public shared ranking
+    aesthetics/[slug]/    # Internal detail page, gallery, videos
+    about/                # Attribution, privacy, and methodology
+  components/             # Cards, lightbox, navigation, UI primitives
   hooks/
-    useSession        # Core state: session, ratings, pair selection
+    useSwipe.ts           # Like/skip discovery state
+    useSession.ts         # Guarded insertion + Supabase persistence
+    useNicheScore.ts      # Taste profile fetch hook
   lib/
-    elo.ts            # ELO algorithm
-    session.ts        # Anonymous session management
-    supabase/         # Supabase client (browser + server)
+    guarded-insertion.ts  # Ranking algorithm
+    gallery.ts            # Image attribution normalization
+    videos.ts             # Video normalization
+    session.ts            # Anonymous session/localStorage helpers
+    supabase/             # Browser/server Supabase clients
 scripts/
-  seed-aesthetics.ts  # One-time DB seed from CARI API
+  seed-aesthetics.ts      # CARI + Are.na data import
 supabase/
-  schema.sql          # Database schema + RLS policies
+  schema.sql              # Tables, indexes, RLS policies
 ```
+
+## Content and Attribution
+
+Images and videos are displayed for identification, research, and reference
+only. The app links back to CARI, Are.na, and original source URLs where
+available. See `/about` in the app for the non-commercial statement, takedown
+contact, and privacy details.

@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Aesthetic } from "@/lib/supabase/types";
-
-const LIKES_KEY = "aesthetics_likes_v2";
-const INDEX_KEY = "aesthetics_swipe_index_v2";
+import { LIKES_KEY, SWIPE_INDEX_KEY } from "@/lib/session";
 
 interface HistoryEntry {
   prevIndex: number;
@@ -24,7 +22,7 @@ export function useSwipe(aesthetics: Aesthetic[]) {
     // pages that just want to display saved progress (e.g. /ranking) can read them.
     try {
       const likes = localStorage.getItem(LIKES_KEY);
-      const index = localStorage.getItem(INDEX_KEY);
+      const index = localStorage.getItem(SWIPE_INDEX_KEY);
       if (likes) {
         const parsed: string[] = JSON.parse(likes);
         // Migrate: any pre-existing duplicates in localStorage are scrubbed
@@ -33,23 +31,25 @@ export function useSwipe(aesthetics: Aesthetic[]) {
         if (deduped.length !== parsed.length) {
           localStorage.setItem(LIKES_KEY, JSON.stringify(deduped));
         }
-        setLikedIds(deduped);
+        queueMicrotask(() => setLikedIds(deduped));
       }
       if (index) {
         const parsed = parseInt(index, 10);
-        setCurrentIndex(
-          aesthetics.length > 0 ? Math.min(parsed, aesthetics.length) : parsed
-        );
+        queueMicrotask(() => {
+          setCurrentIndex(
+            aesthetics.length > 0 ? Math.min(parsed, aesthetics.length) : parsed
+          );
+        });
       }
     } catch {
       // ignore
     }
-    setLoaded(true);
+    queueMicrotask(() => setLoaded(true));
   }, [aesthetics.length]);
 
   function persist(likes: string[], index: number) {
     localStorage.setItem(LIKES_KEY, JSON.stringify(likes));
-    localStorage.setItem(INDEX_KEY, String(index));
+    localStorage.setItem(SWIPE_INDEX_KEY, String(index));
   }
 
   const like = () => {
@@ -95,7 +95,7 @@ export function useSwipe(aesthetics: Aesthetic[]) {
     setCurrentIndex(0);
     setHistory([]);
     localStorage.removeItem(LIKES_KEY);
-    localStorage.removeItem(INDEX_KEY);
+    localStorage.removeItem(SWIPE_INDEX_KEY);
   };
 
   const isDone = loaded && currentIndex >= aesthetics.length;

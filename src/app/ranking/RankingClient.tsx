@@ -63,6 +63,7 @@ export function RankingClient() {
   // Hooks must run unconditionally — call useNicheScore here even if data is
   // still loading; the hook's `enabled` flag handles gating.
   const hasFullTop = session.confirmedTop.length >= session.K;
+  const confirmedTopKey = session.confirmedTop.join(",");
   const niche = useNicheScore(
     session.confirmedTop,
     session.sessionId,
@@ -107,7 +108,7 @@ export function RankingClient() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session.sessionId, session.confirmedTop.join(",")]
+    [session.sessionId, confirmedTopKey]
   );
 
   const handleShareClick = async () => {
@@ -132,7 +133,9 @@ export function RankingClient() {
     // Hydrate from localStorage first so reloads pick up the prior link.
     const stored = getStoredShareUrl();
     if (stored && !shareUrl) {
-      setShareUrl(stored);
+      queueMicrotask(() => {
+        setShareUrl(stored);
+      });
       autoSharedRef.current = true;
       return;
     }
